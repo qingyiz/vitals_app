@@ -181,6 +181,7 @@ void MainWindow::applyStyle()
         QLabel#pageSubtitle {
             color: #6e6e73;
             font-size: 13px;
+            line-height: 1.35;
         }
         QLabel#statusPill {
             background: rgba(50, 215, 75, 0.14);
@@ -214,6 +215,89 @@ void MainWindow::applyStyle()
             background: rgba(255, 255, 255, 0.86);
             border: 1px solid #dedee3;
             border-radius: 8px;
+        }
+        QFrame#systemOverviewPanel {
+            background: transparent;
+            border: none;
+        }
+        QFrame#systemHeroPanel {
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                stop:0 rgba(255,255,255,0.98),
+                stop:1 rgba(246,247,250,0.98));
+            border: 1px solid #d8dbe1;
+            border-radius: 18px;
+        }
+        QLabel#systemHeroEyebrow {
+            color: #8e8e93;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        QLabel#systemHeroTitle {
+            color: #101114;
+            font-size: 32px;
+            font-weight: 800;
+        }
+        QLabel#systemHeroSubtitle {
+            color: #5b6068;
+            font-size: 13px;
+        }
+        QLabel#systemHeroMeta {
+            color: #7a7f87;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        QFrame#systemBadge {
+            background: rgba(248,249,251,0.92);
+            border: 1px solid #dde0e6;
+            border-radius: 12px;
+        }
+        QLabel#systemBadgeLabel {
+            color: #8e8e93;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        QLabel#systemBadgeValue {
+            color: #1d1d1f;
+            font-size: 17px;
+            font-weight: 700;
+        }
+        QFrame#systemDetailsPanel {
+            background: rgba(255, 255, 255, 0.90);
+            border: 1px solid #dde0e6;
+            border-radius: 18px;
+        }
+        QLabel#systemSectionTitle {
+            color: #1d1d1f;
+            font-size: 15px;
+            font-weight: 700;
+        }
+        QLabel#systemInfoKeyLabel {
+            color: #7a7f87;
+            font-size: 11px;
+            font-weight: 600;
+            min-width: 56px;
+        }
+        QLabel#systemInfoValueLabel {
+            color: #1d1d1f;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        QFrame#systemInfoTile {
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid #dde0e6;
+            border-radius: 14px;
+        }
+        QLabel#systemInfoTileEyebrow {
+            color: #8e8e93;
+            font-size: 10px;
+            font-weight: 700;
+        }
+        QLabel#systemInfoTileValue {
+            color: #1d1d1f;
+            font-size: 16px;
+            font-weight: 700;
         }
         QLabel#panelTitle {
             color: #1d1d1f;

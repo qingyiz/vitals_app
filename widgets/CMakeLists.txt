@@ -1,6 +1,8 @@
 add_library(VitalsWidgets STATIC
     CardWidget.h
     CardWidget.cpp
+    InfoPanelWidget.h
+    InfoPanelWidget.cpp
     LineChartWidget.h
     GaugeWidget.h
     MetricTableWidget.h
@@ -17,4 +19,3 @@ target_link_libraries(VitalsWidgets
     PUBLIC
         ${VITALS_QT_LIBS}
 )
-
