@@ -67,6 +67,11 @@ QString HelloPlugin::panelName() const
     return QStringLiteral("Hello Plugin");
 }
 
+QString HelloPlugin::panelIconKey() const
+{
+    return QStringLiteral("hello");
+}
+
 QWidget* HelloPlugin::createPanel(QWidget* parent)
 {
     auto* page = new QWidget(parent);
@@ -86,4 +91,3 @@ QWidget* HelloPlugin::createPanel(QWidget* parent)
 }
 
 } // namespace Vitals
-

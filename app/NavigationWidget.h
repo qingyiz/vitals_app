@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QIcon>
 #include <QListWidget>
 
 namespace Vitals {
@@ -11,9 +12,8 @@ class NavigationWidget : public QListWidget
 public:
     explicit NavigationWidget(QWidget* parent = nullptr);
 
-    void addNavigationItem(const QString& id, const QString& title);
+    void addNavigationItem(const QString& id, const QString& title, const QIcon& icon = QIcon());
     QString currentItemId() const;
 };
 
 } // namespace Vitals
-

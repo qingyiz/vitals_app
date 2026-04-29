@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QIcon>
 #include <QMainWindow>
 
 class QStackedWidget;
@@ -46,13 +47,16 @@ private:
     void loadPlugins();
 
     /// Adds a page to both the navigation list and stacked content area.
-    void addPage(const QString& id, const QString& title, QWidget* page);
+    void addPage(const QString& id, const QString& title, QWidget* page, const QIcon& icon = QIcon());
 
     /// Creates the host-owned plugin management placeholder page.
     QWidget* createPluginManagerPage();
 
     /// Applies the current host visual theme and widget stylesheet.
     void applyStyle();
+
+    /// Creates a consistent host-owned navigation icon from a semantic key.
+    QIcon createNavigationIcon(const QString& iconKey) const;
 
     MetricCenter* m_metricCenter = nullptr;
     ConfigManager* m_configManager = nullptr;

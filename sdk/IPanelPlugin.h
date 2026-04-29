@@ -2,6 +2,8 @@
 
 #include "IPlugin.h"
 
+#include <QIcon>
+
 class QWidget;
 
 namespace Vitals {
@@ -47,6 +49,38 @@ public:
      * \endif
      */
     virtual QString panelName() const = 0;
+
+    /**
+     * \if ENGLISH
+     * @brief Returns the semantic icon key used by host navigation
+     * \endif
+     *
+     * \if CHINESE
+     * @brief 返回宿主导航使用的语义化图标 key
+     * \endif
+     */
+    virtual QString panelIconKey() const = 0;
+
+    /**
+     * \if ENGLISH
+     * @brief Returns a custom icon override for host navigation when needed
+     *
+     * Most plugins should prefer panelIconKey() and let the host render a
+     * consistent navigation icon. This function is a fallback for plugins that
+     * genuinely need a custom-drawn icon.
+     * \endif
+     *
+     * \if CHINESE
+     * @brief 在确有需要时返回宿主导航使用的自定义图标覆盖值
+     *
+     * 大多数插件应优先返回 panelIconKey()，由宿主统一生成风格一致的导航
+     * 图标。该函数仅作为确实需要自定义图标时的兜底接口。
+     * \endif
+     */
+    virtual QIcon panelIcon() const
+    {
+        return {};
+    }
 
     /**
      * \if ENGLISH

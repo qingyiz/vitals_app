@@ -23,6 +23,7 @@ public:
 
     QString panelId() const override;
     QString panelName() const override;
+    QString panelIconKey() const override;
     QWidget* createPanel(QWidget* parent = nullptr) override;
 
 private:
@@ -30,4 +31,3 @@ private:
 };
 
 } // namespace Vitals
-

@@ -11,15 +11,61 @@
 #include "plugin/PluginManager.h"
 
 #include <QApplication>
+#include <QColor>
 #include <QCoreApplication>
 #include <QDir>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QPainter>
+#include <QPixmap>
 #include <QStackedWidget>
 #include <QStatusBar>
 #include <QVBoxLayout>
 
 namespace Vitals {
+
+namespace {
+
+struct NavigationIconSpec
+{
+    QString glyph;
+    QColor background;
+    QColor foreground;
+};
+
+NavigationIconSpec iconSpecForKey(const QString& key)
+{
+    if (key == QStringLiteral("dashboard")) {
+        return {QStringLiteral("D"), QColor(QStringLiteral("#0a84ff")), Qt::white};
+    }
+    if (key == QStringLiteral("plugins")) {
+        return {QStringLiteral("P"), QColor(QStringLiteral("#5e5ce6")), Qt::white};
+    }
+    if (key == QStringLiteral("hello")) {
+        return {QStringLiteral("H"), QColor(QStringLiteral("#ff9f0a")), Qt::white};
+    }
+    if (key == QStringLiteral("system")) {
+        return {QStringLiteral("S"), QColor(QStringLiteral("#64d2ff")), QColor(QStringLiteral("#0b2230"))};
+    }
+    if (key == QStringLiteral("cpu")) {
+        return {QStringLiteral("C"), QColor(QStringLiteral("#ff453a")), Qt::white};
+    }
+    if (key == QStringLiteral("memory")) {
+        return {QStringLiteral("M"), QColor(QStringLiteral("#32d74b")), QColor(QStringLiteral("#0b2230"))};
+    }
+    if (key == QStringLiteral("network")) {
+        return {QStringLiteral("N"), QColor(QStringLiteral("#0a84ff")), Qt::white};
+    }
+    if (key == QStringLiteral("disk")) {
+        return {QStringLiteral("D"), QColor(QStringLiteral("#bf5af2")), Qt::white};
+    }
+    if (key == QStringLiteral("battery")) {
+        return {QStringLiteral("B"), QColor(QStringLiteral("#ffd60a")), QColor(QStringLiteral("#0b2230"))};
+    }
+    return {key.left(1).toUpper(), QColor(QStringLiteral("#8e8e93")), Qt::white};
+}
+
+} // namespace
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -69,9 +115,11 @@ void MainWindow::setupUi()
 
     auto* dashboard = new DashboardWidget(this);
     dashboard->bindMetricCenter(m_metricCenter);
-    addPage(QStringLiteral("dashboard"), QStringLiteral("Dashboard"), dashboard);
+    addPage(QStringLiteral("dashboard"), QStringLiteral("Dashboard"), dashboard,
+        createNavigationIcon(QStringLiteral("dashboard")));
 
-    addPage(QStringLiteral("plugins"), QStringLiteral("Plugins"), createPluginManagerPage());
+    addPage(QStringLiteral("plugins"), QStringLiteral("Plugins"), createPluginManagerPage(),
+        createNavigationIcon(QStringLiteral("plugins")));
 
     connect(m_navigation, &QListWidget::currentRowChanged,
         m_pages, &QStackedWidget::setCurrentIndex);
@@ -101,16 +149,42 @@ void MainWindow::loadPlugins()
         if (!panelPlugin) {
             continue;
         }
-        addPage(panelPlugin->panelId(), panelPlugin->panelName(), panelPlugin->createPanel(this));
+        addPage(panelPlugin->panelId(), panelPlugin->panelName(), panelPlugin->createPanel(this),
+            panelPlugin->panelIcon().isNull()
+                ? createNavigationIcon(panelPlugin->panelIconKey())
+                : panelPlugin->panelIcon());
     }
 
     statusBar()->showMessage(QStringLiteral("Loaded %1 plugin(s)").arg(m_pluginManager->loadedPluginCount()));
 }
 
-void MainWindow::addPage(const QString& id, const QString& title, QWidget* page)
+void MainWindow::addPage(const QString& id, const QString& title, QWidget* page, const QIcon& icon)
 {
-    m_navigation->addNavigationItem(id, title);
+    m_navigation->addNavigationItem(id, title, icon);
     m_pages->addWidget(page);
+}
+
+QIcon MainWindow::createNavigationIcon(const QString& iconKey) const
+{
+    const NavigationIconSpec spec = iconSpecForKey(iconKey);
+
+    QPixmap pixmap(36, 36);
+    pixmap.fill(Qt::transparent);
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setBrush(spec.background);
+    painter.setPen(Qt::NoPen);
+    painter.drawRoundedRect(QRectF(3, 3, 30, 30), 9, 9);
+
+    QFont font = painter.font();
+    font.setBold(true);
+    font.setPixelSize(16);
+    painter.setFont(font);
+    painter.setPen(spec.foreground);
+    painter.drawText(pixmap.rect(), Qt::AlignCenter, spec.glyph.left(1));
+
+    return QIcon(pixmap);
 }
 
 QWidget* MainWindow::createPluginManagerPage()
