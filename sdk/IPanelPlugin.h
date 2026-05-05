@@ -23,7 +23,7 @@ namespace Vitals {
  * 自身负责。
  * \endif
  */
-class IPanelPlugin : public IPlugin
+class IPanelPlugin : public virtual IPlugin
 {
 public:
     ~IPanelPlugin() override = default;

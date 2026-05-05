@@ -20,7 +20,7 @@ namespace Vitals {
  * 并调度监控型插件。
  * \endif
  */
-class IMonitorPlugin : public IPlugin
+class IMonitorPlugin : public virtual IPlugin
 {
 public:
     ~IMonitorPlugin() override = default;

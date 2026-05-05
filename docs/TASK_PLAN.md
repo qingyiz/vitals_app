@@ -2,13 +2,16 @@
 
 ## 当前目标
 
-根据 `agent.md` 的架构约束，先搭建一个可继续演进的 C++ / Qt / CMake 项目框架，重点验证：
+根据 `agent.md` 的架构约束，搭建一个可继续演进的 C++ / Qt / CMake 插件化系统监控框架，并逐步把“宿主框架 + 插件 + 统一 UI 组件 + 跨平台采集层”做实。
+
+当前阶段重点验证：
 
 - 主程序只承担宿主框架职责。
 - 插件通过 SDK 接口接入。
 - 插件可以被动态加载。
 - 插件可以提供 QWidget 页面。
 - 插件可以通过统一 Metric 数据模型向宿主发布数据。
+- 插件页面可以复用宿主提供的通用页面骨架，而不是每个插件都手写布局。
 
 ## 已完成
 
@@ -26,6 +29,7 @@ cmake --build build
 ```text
 build/bin/Vitals
 build/bin/plugins/libHelloPlugin.so
+build/bin/plugins/libSystemInfoPlugin.so
 ```
 
 ### 1. 项目基础结构
@@ -57,6 +61,10 @@ docs/
 
 这些接口作为宿主和插件之间的稳定边界，后续新增能力优先扩展接口，而不是让插件直接依赖主窗口。
 
+同时已修正一个关键结构问题：
+
+- `IMonitorPlugin` 与 `IPanelPlugin` 对 `IPlugin` 使用虚继承，支持一个插件同时具备“监控 + 面板”双能力。
+
 ### 3. 核心框架
 
 已完成核心模块雏形：
@@ -76,6 +84,7 @@ docs/
 - `DashboardWidget`：从 `MetricCenter` 接收指标并展示。
 - `AppContext`：向插件暴露宿主服务。
 - `TaskbarIndicator`：跨平台任务栏 / 托盘 / macOS 菜单栏指标显示抽象。
+- Dashboard 已支持把 `*.bytes` 指标自动格式化为 `KB / MB / GB / TB` 这种可读单位。
 
 主程序目前不包含任何 CPU、内存、网络等具体监控采集逻辑。
 
@@ -86,6 +95,16 @@ docs/
 已创建 `widgets` 模块，并实现：
 
 - `CardWidget`
+- `InfoPanelWidget`
+
+其中 `InfoPanelWidget` 已经承担插件详情页的通用页面骨架职责，统一封装：
+
+- 页面标题 / 副标题
+- Hero 概览区
+- Key-Value 快照区
+- Tile 网格区
+
+这样后续插件页面可以优先“传数据”，而不是每个插件都从零开始拼 Qt 布局。
 
 同时预留了图表、仪表盘、表格、小型曲线组件的类型入口，后续可逐步补齐实现。
 
@@ -106,15 +125,59 @@ docs/
 build/bin/plugins/
 ```
 
+### 7. 系统信息插件（macOS 首版）
+
+已完成 `SystemInfoPlugin` 第一版：
+
+- 插件目录位于 `plugins/systeminfo/`。
+- 当前仅支持 macOS，并通过 `supportedPlatforms: ["macos"]` 明确声明。
+- 插件同时提供监控数据能力和详情页能力。
+- 采集层使用 `ISystemInfoCollector` + `SystemInfoCollectorFactory` + `platform/macos/` 分层组织。
+- 当前已上报设备名、macOS 版本、CPU 型号、GPU 型号、总内存、系统运行时长。
+- 插件详情页改为复用 `InfoPanelWidget`，展示同一份统一快照数据。
+- macOS GPU 信息通过 Metal 默认设备名进行采集。
+
+该插件已经完成编译接入，并会输出到运行目录的 `plugins/` 下。
+
+## 当前已实现功能清单
+
+### 框架层
+
+- Qt/CMake 工程骨架已经建立。
+- 宿主、SDK、核心框架、插件目录、通用 `widgets` 目录已经分离。
+- 插件支持动态加载、初始化、启动、停止、卸载。
+- 插件元信息支持 `supportedPlatforms`，宿主会在加载前做平台过滤。
+- 统一 `MetricFrame` / `MetricValue` / `MetricDescriptor` 数据模型已经建立。
+
+### 宿主程序
+
+- 主窗口、导航、Dashboard、插件页面容器已经可用。
+- 任务栏 / 托盘 / 菜单栏显示抽象已经建立。
+- Dashboard 可以显示插件发布的实时指标。
+- Dashboard 已支持对字节类指标进行可读单位格式化。
+
+### UI 组件
+
+- `CardWidget` 已用于 Dashboard 指标卡片。
+- `InfoPanelWidget` 已用于构建信息类详情页。
+- 插件页面已经开始从“手写布局”迁移到“复用宿主组件”模式。
+
+### 插件
+
+- `HelloPlugin` 已验证最小插件加载链路。
+- `SystemInfoPlugin` 已完成 macOS 首版。
+- `SystemInfoPlugin` 同时验证了“监控插件 + 面板插件”双能力模式。
+
 ## 下一阶段计划
 
 ### 第一阶段补强：框架跑通与工程稳定
 
-- 启动 GUI，确认主程序可以实际加载 `HelloPlugin` 并显示插件页面。
+- 启动 GUI，确认主程序可以实际加载 `HelloPlugin` 和 `SystemInfoPlugin` 并正确显示页面。
 - 在 Windows、macOS、Linux 分别验证任务栏 / 托盘 / 菜单栏显示行为。
 - 增加基础自动化测试或最小 smoke test，避免后续改动破坏插件加载链路。
 - 为插件加载失败增加更完整的错误展示页面。
 - 为插件管理页展示已加载插件、失败插件和状态。
+- 继续完善宿主统一样式，使 Dashboard、插件页、任务栏提示风格更一致。
 
 ### 第二阶段：数据链路跑通
 
@@ -123,13 +186,15 @@ build/bin/plugins/
 - Dashboard 根据统一 Metric key 自动展示核心指标。
 - 任务栏显示同步展示 Mock 指标摘要。
 - 加入指标刷新节流和历史点缓存。
+- 让 `InfoPanelWidget` 支持更多可选区块，例如图表区、状态标签区、附加列表区。
 
 ### 第三阶段：系统信息插件
 
-- 新增 `plugins/systeminfo/`。
-- 设计 `ISystemInfoCollector`。
-- 分别实现 Windows、macOS、Linux 平台采集入口。
-- 提供系统信息详情页。
+- 补充 Windows 平台系统信息采集实现。
+- 补充 Linux 平台系统信息采集实现。
+- 将系统信息详情页扩展为更完整的硬件与宿主摘要页。
+- 根据需要增加更多稳定指标，例如架构、内核版本、序列化标识等。
+- 继续抽离 `InfoTileWidget`、`InfoRowWidget` 等更细粒度组件，降低后续插件页面开发成本。
 
 ### 第四阶段：CPU 插件
 
@@ -137,6 +202,7 @@ build/bin/plugins/
 - 建立 `ICpuCollector` 和平台工厂。
 - 实现 CPU 总使用率、每核心使用率、CPU 型号。
 - 将采集与 UI 展示解耦，数据统一进入 `MetricCenter`。
+- 优先复用宿主提供的页面骨架与卡片组件，不再为 CPU 页面重写整套布局。
 
 ### 第五阶段：核心监控插件扩展
 
@@ -152,4 +218,12 @@ build/bin/plugins/
 
 ## 当前边界说明
 
-当前版本是框架骨架，不实现真实系统监控采集。这样做是为了先稳定宿主、插件、SDK、Metric 数据链路，避免把监控逻辑提前写进主程序，破坏插件化架构。
+当前版本已经不再只是纯骨架，已经包含一个可编译接入的 macOS SystemInfo 首版插件和一套可复用的宿主页面骨架组件。
+
+但项目整体仍处于早期阶段，当前边界仍然包括：
+
+- 真实监控能力还未补齐，CPU / Memory / Network / Disk / Battery 等核心插件尚未实现。
+- 插件管理页仍是占位版本。
+- 自动化测试仍未建立。
+- 多平台运行验证还未完成。
+- 通用 UI 组件体系刚开始搭建，仍有继续抽象空间。

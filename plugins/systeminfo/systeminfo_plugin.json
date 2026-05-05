@@ -1,0 +1,10 @@
+{
+  "id": "com.vitals.systeminfo",
+  "name": "System Information",
+  "description": "macOS system identity and host information plugin.",
+  "version": "0.1.0",
+  "author": "Vitals",
+  "category": "monitor",
+  "supportedPlatforms": ["macos"],
+  "requiredHostVersion": "0.1.0"
+}
