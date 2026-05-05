@@ -12,6 +12,7 @@ class ConfigManager;
 class DashboardWidget;
 class MetricCenter;
 class NavigationWidget;
+class PluginCenterWidget;
 class PluginManager;
 class TaskbarIndicator;
 
@@ -46,6 +47,12 @@ private:
     /// Loads plugins from the runtime plugin directory and mounts panel pages.
     void loadPlugins();
 
+    /// Reloads plugin runtime state after enable/disable changes.
+    void reloadPlugins();
+
+    /// Clears cached metrics that belong to the currently loaded plugins.
+    void clearLoadedPluginMetrics();
+
     /// Adds a page to both the navigation list and stacked content area.
     void addPage(const QString& id, const QString& title, QWidget* page, const QIcon& icon = QIcon());
 
@@ -58,11 +65,15 @@ private:
     /// Creates a consistent host-owned navigation icon from a semantic key.
     QIcon createNavigationIcon(const QString& iconKey) const;
 
+    /// Removes all pages and rebuilds the host and plugin navigation entries.
+    void rebuildPages(const QString& preferredPageId = QString());
+
     MetricCenter* m_metricCenter = nullptr;
     ConfigManager* m_configManager = nullptr;
     AppContext* m_appContext = nullptr;
     PluginManager* m_pluginManager = nullptr;
     TaskbarIndicator* m_taskbarIndicator = nullptr;
+    PluginCenterWidget* m_pluginCenterPage = nullptr;
     NavigationWidget* m_navigation = nullptr;
     QStackedWidget* m_pages = nullptr;
 };

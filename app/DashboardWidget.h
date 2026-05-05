@@ -42,9 +42,12 @@ public:
 private Q_SLOTS:
     /// Re-renders one card when a metric value changes.
     void updateMetric(const Vitals::MetricValue& value);
+    /// Removes one card when the owning plugin is unloaded.
+    void removeMetric(const QString& key);
 
 private:
     CardWidget* ensureCard(const QString& key);
+    void relayoutCards();
     QString displayTitleForMetric(const QString& key) const;
     QString displayValueForMetric(const MetricValue& value) const;
     QString displayHintForMetric(const MetricValue& value) const;

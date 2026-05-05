@@ -4,6 +4,7 @@
 #include "DashboardWidget.h"
 #include "IPanelPlugin.h"
 #include "NavigationWidget.h"
+#include "PluginCenterWidget.h"
 #include "config/ConfigManager.h"
 #include "metric/MetricCenter.h"
 #include "platform/taskbar/TaskbarIndicator.h"
@@ -86,6 +87,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(m_taskbarIndicator, &TaskbarIndicator::quitRequested,
         qApp, &QApplication::quit);
     loadPlugins();
+    rebuildPages();
     m_pluginManager->startAll();
 }
 
@@ -113,17 +115,9 @@ void MainWindow::setupUi()
     layout->addWidget(m_pages, 1);
     setCentralWidget(central);
 
-    auto* dashboard = new DashboardWidget(this);
-    dashboard->bindMetricCenter(m_metricCenter);
-    addPage(QStringLiteral("dashboard"), QStringLiteral("Dashboard"), dashboard,
-        createNavigationIcon(QStringLiteral("dashboard")));
-
-    addPage(QStringLiteral("plugins"), QStringLiteral("Plugins"), createPluginManagerPage(),
-        createNavigationIcon(QStringLiteral("plugins")));
-
     connect(m_navigation, &QListWidget::currentRowChanged,
         m_pages, &QStackedWidget::setCurrentIndex);
-    m_navigation->setCurrentRow(0);
+    rebuildPages();
 
     statusBar()->showMessage(QStringLiteral("Framework ready"));
 }
@@ -134,28 +128,47 @@ void MainWindow::loadPlugins()
         [this](const QString& pluginId, const QString& pluginName) {
             statusBar()->showMessage(QStringLiteral("Loaded plugin: %1").arg(pluginName), 3000);
             Q_UNUSED(pluginId)
-        });
+        }, Qt::UniqueConnection);
     connect(m_pluginManager, &PluginManager::pluginSkipped, this,
         [this](const QString& path, const QString& reason) {
             statusBar()->showMessage(QStringLiteral("Skipped plugin: %1").arg(reason), 3000);
             Q_UNUSED(path)
-        });
+        }, Qt::UniqueConnection);
 
     const QString pluginsDir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("plugins"));
-    m_pluginManager->loadAllPlugins(pluginsDir, m_appContext);
-
-    for (IPlugin* plugin : m_pluginManager->plugins()) {
-        auto* panelPlugin = dynamic_cast<IPanelPlugin*>(plugin);
-        if (!panelPlugin) {
-            continue;
-        }
-        addPage(panelPlugin->panelId(), panelPlugin->panelName(), panelPlugin->createPanel(this),
-            panelPlugin->panelIcon().isNull()
-                ? createNavigationIcon(panelPlugin->panelIconKey())
-                : panelPlugin->panelIcon());
+    m_pluginManager->loadAllPlugins(pluginsDir, m_appContext, m_configManager);
+    if (m_pluginCenterPage) {
+        m_pluginCenterPage->setPluginInfos(m_pluginManager->pluginInfos());
     }
 
     statusBar()->showMessage(QStringLiteral("Loaded %1 plugin(s)").arg(m_pluginManager->loadedPluginCount()));
+}
+
+void MainWindow::reloadPlugins()
+{
+    const QString preferredPageId = m_navigation ? m_navigation->currentItemId() : QString();
+
+    m_pluginManager->stopAll();
+    clearLoadedPluginMetrics();
+    m_pluginManager->shutdownAll();
+    loadPlugins();
+    rebuildPages(preferredPageId);
+    m_pluginManager->startAll();
+    statusBar()->showMessage(QStringLiteral("Plugin enable state updated"), 3000);
+}
+
+void MainWindow::clearLoadedPluginMetrics()
+{
+    for (IPlugin* plugin : m_pluginManager->plugins()) {
+        if (!plugin) {
+            continue;
+        }
+
+        const QString pluginId = plugin->metaInfo().id;
+        if (!pluginId.isEmpty()) {
+            m_metricCenter->removePluginMetrics(pluginId);
+        }
+    }
 }
 
 void MainWindow::addPage(const QString& id, const QString& title, QWidget* page, const QIcon& icon)
@@ -189,35 +202,58 @@ QIcon MainWindow::createNavigationIcon(const QString& iconKey) const
 
 QWidget* MainWindow::createPluginManagerPage()
 {
-    auto* page = new QWidget(this);
-    auto* layout = new QVBoxLayout(page);
-    layout->setContentsMargins(28, 24, 28, 28);
-    layout->setSpacing(14);
+    m_pluginCenterPage = new PluginCenterWidget(m_configManager, this);
+    connect(m_pluginCenterPage, &PluginCenterWidget::pluginEnabledChanged, this,
+        [this](const QString& pluginId, const QString& filePath, bool enabled) {
+            m_configManager->setPluginEnabled(pluginId, filePath, enabled);
+            reloadPlugins();
+        });
+    return m_pluginCenterPage;
+}
 
-    auto* title = new QLabel(QStringLiteral("Plugins"), page);
-    title->setObjectName(QStringLiteral("pageTitle"));
-    auto* summary = new QLabel(QStringLiteral("Loaded plugins, platform compatibility, and runtime status will be managed here."), page);
-    summary->setObjectName(QStringLiteral("pageSubtitle"));
-    summary->setWordWrap(true);
+void MainWindow::rebuildPages(const QString& preferredPageId)
+{
+    m_navigation->clear();
 
-    auto* panel = new QFrame(page);
-    panel->setObjectName(QStringLiteral("emptyPanel"));
-    auto* panelLayout = new QVBoxLayout(panel);
-    panelLayout->setContentsMargins(18, 16, 18, 16);
-    panelLayout->setSpacing(6);
-    auto* panelTitle = new QLabel(QStringLiteral("Plugin Center"), panel);
-    panelTitle->setObjectName(QStringLiteral("panelTitle"));
-    auto* panelBody = new QLabel(QStringLiteral("The next milestone will list loaded, skipped, and failed plugins with their declared supportedPlatforms."), panel);
-    panelBody->setObjectName(QStringLiteral("panelBody"));
-    panelBody->setWordWrap(true);
-    panelLayout->addWidget(panelTitle);
-    panelLayout->addWidget(panelBody);
+    while (m_pages->count() > 0) {
+        QWidget* widget = m_pages->widget(0);
+        m_pages->removeWidget(widget);
+        widget->deleteLater();
+    }
 
-    layout->addWidget(title);
-    layout->addWidget(summary);
-    layout->addWidget(panel);
-    layout->addStretch();
-    return page;
+    auto* dashboard = new DashboardWidget(this);
+    dashboard->bindMetricCenter(m_metricCenter);
+    addPage(QStringLiteral("dashboard"), QStringLiteral("Dashboard"), dashboard,
+        createNavigationIcon(QStringLiteral("dashboard")));
+
+    addPage(QStringLiteral("plugins"), QStringLiteral("Plugins"), createPluginManagerPage(),
+        createNavigationIcon(QStringLiteral("plugins")));
+    if (m_pluginCenterPage) {
+        m_pluginCenterPage->setPluginInfos(m_pluginManager->pluginInfos());
+    }
+
+    for (IPlugin* plugin : m_pluginManager->plugins()) {
+        auto* panelPlugin = dynamic_cast<IPanelPlugin*>(plugin);
+        if (!panelPlugin) {
+            continue;
+        }
+        addPage(panelPlugin->panelId(), panelPlugin->panelName(), panelPlugin->createPanel(this),
+            panelPlugin->panelIcon().isNull()
+                ? createNavigationIcon(panelPlugin->panelIconKey())
+                : panelPlugin->panelIcon());
+    }
+
+    if (!preferredPageId.isEmpty() && m_navigation->setCurrentItemById(preferredPageId)) {
+        return;
+    }
+
+    if (m_navigation->setCurrentItemById(QStringLiteral("plugins"))) {
+        return;
+    }
+
+    if (m_navigation->count() > 0) {
+        m_navigation->setCurrentRow(0);
+    }
 }
 
 void MainWindow::applyStyle()

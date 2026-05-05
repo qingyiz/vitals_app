@@ -1,8 +1,11 @@
 #pragma once
 
+#include "PluginMetaInfo.h"
+
 #include <QObject>
 #include <QSharedPointer>
 #include <QString>
+#include <QStringList>
 #include <QVector>
 
 class QPluginLoader;
@@ -11,6 +14,32 @@ namespace Vitals {
 
 class IAppContext;
 class IPlugin;
+class ConfigManager;
+
+/**
+ * \if ENGLISH
+ * @brief Runtime state summary for one discovered plugin binary
+ * \endif
+ *
+ * \if CHINESE
+ * @brief 单个已发现插件二进制的运行时状态摘要
+ * \endif
+ */
+struct PluginRuntimeInfo
+{
+    enum class Status
+    {
+        Loaded,
+        Disabled,
+        Skipped,
+        Failed
+    };
+
+    QString filePath;
+    PluginMetaInfo metaInfo;
+    Status status = Status::Failed;
+    QString reason;
+};
 
 /**
  * \if ENGLISH
@@ -45,7 +74,7 @@ public:
      * @brief 扫描指定目录并初始化所有与当前平台兼容的插件
      * \endif
      */
-    void loadAllPlugins(const QString& pluginsDir, IAppContext* context);
+    void loadAllPlugins(const QString& pluginsDir, IAppContext* context, const ConfigManager* configManager = nullptr);
 
     /// Starts every successfully loaded plugin.
     void startAll();
@@ -62,6 +91,9 @@ public:
     /// Returns the number of successfully loaded plugins.
     int loadedPluginCount() const;
 
+    /// Returns runtime summaries for all discovered plugin binaries.
+    QList<PluginRuntimeInfo> pluginInfos() const;
+
 Q_SIGNALS:
     void pluginLoaded(const QString& pluginId, const QString& pluginName);
     void pluginLoadFailed(const QString& path, const QString& reason);
@@ -77,8 +109,10 @@ private:
     static bool isPluginFile(const QString& fileName);
     static QString currentPlatformId();
     static bool supportsCurrentPlatform(const QPluginLoader& loader, QString* reason);
+    static PluginMetaInfo metaInfoFromLoader(const QPluginLoader& loader);
 
     QVector<LoadedPlugin> m_plugins;
+    QVector<PluginRuntimeInfo> m_pluginInfos;
 };
 
 } // namespace Vitals

@@ -8,6 +8,10 @@ add_executable(VitalsApp
     DashboardWidget.cpp
     NavigationWidget.h
     NavigationWidget.cpp
+    PluginCenterWidget.h
+    PluginCenterWidget.cpp
+    ToggleSwitch.h
+    ToggleSwitch.cpp
     platform/taskbar/TaskbarIndicator.h
     platform/taskbar/TaskbarIndicator.cpp
     platform/taskbar/TaskbarIndicatorFactory.h

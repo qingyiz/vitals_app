@@ -58,6 +58,8 @@ void TaskbarIndicator::bindMetricCenter(MetricCenter* metricCenter)
 {
     connect(metricCenter, &MetricCenter::metricUpdated,
         this, &TaskbarIndicator::handleMetricUpdated);
+    connect(metricCenter, &MetricCenter::metricRemoved,
+        this, &TaskbarIndicator::handleMetricRemoved);
 }
 
 QString TaskbarIndicator::idleText() const
@@ -123,6 +125,12 @@ QString TaskbarIndicator::formatMetricValue(const MetricValue& value) const
 void TaskbarIndicator::handleMetricUpdated(const MetricValue& value)
 {
     m_latestValues.insert(value.key, value);
+    refresh();
+}
+
+void TaskbarIndicator::handleMetricRemoved(const QString& key)
+{
+    m_latestValues.remove(key);
     refresh();
 }
 
@@ -193,4 +201,3 @@ QIcon TaskbarIndicator::buildIcon(const QString& label) const
 }
 
 } // namespace Vitals
-

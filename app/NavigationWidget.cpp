@@ -25,4 +25,16 @@ QString NavigationWidget::currentItemId() const
     return item ? item->data(Qt::UserRole).toString() : QString();
 }
 
+bool NavigationWidget::setCurrentItemById(const QString& id)
+{
+    for (int row = 0; row < count(); ++row) {
+        QListWidgetItem* item = this->item(row);
+        if (item && item->data(Qt::UserRole).toString() == id) {
+            setCurrentRow(row);
+            return true;
+        }
+    }
+    return false;
+}
+
 } // namespace Vitals

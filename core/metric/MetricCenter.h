@@ -47,6 +47,17 @@ public:
      */
     void publishFrame(const MetricFrame& frame) override;
 
+    /**
+     * \if ENGLISH
+     * @brief Removes all cached metric values that belong to one plugin
+     * \endif
+     *
+     * \if CHINESE
+     * @brief 移除某个插件对应的全部缓存指标值
+     * \endif
+     */
+    void removePluginMetrics(const QString& pluginId);
+
     /// Returns whether the latest-value cache already contains the key.
     bool hasMetric(const QString& key) const;
 
@@ -59,11 +70,14 @@ public:
 Q_SIGNALS:
     void framePublished(const Vitals::MetricFrame& frame);
     void metricUpdated(const Vitals::MetricValue& value);
+    void metricRemoved(const QString& key);
 
 private:
     void publishFrameOnOwnerThread(const MetricFrame& frame);
+    void removePluginMetricsOnOwnerThread(const QString& pluginId);
 
     QHash<QString, MetricValue> m_latestValues;
+    QHash<QString, QString> m_metricOwners;
 };
 
 } // namespace Vitals

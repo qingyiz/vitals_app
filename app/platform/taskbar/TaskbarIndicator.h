@@ -89,6 +89,7 @@ protected:
 
 private:
     void handleMetricUpdated(const MetricValue& value);
+    void handleMetricRemoved(const QString& key);
     void refresh();
     QStringList orderedMetricKeys() const;
     QIcon buildIcon(const QString& label) const;

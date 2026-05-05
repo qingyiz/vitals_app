@@ -1,6 +1,8 @@
 #include "plugin/PluginManager.h"
 
 #include "IPlugin.h"
+#include "PluginMetaInfo.h"
+#include "config/ConfigManager.h"
 
 #include <QCoreApplication>
 #include <QDebug>
@@ -22,8 +24,10 @@ PluginManager::~PluginManager()
     shutdownAll();
 }
 
-void PluginManager::loadAllPlugins(const QString& pluginsDir, IAppContext* context)
+void PluginManager::loadAllPlugins(const QString& pluginsDir, IAppContext* context, const ConfigManager* configManager)
 {
+    m_pluginInfos.clear();
+
     QDir dir(pluginsDir);
     if (!dir.exists()) {
         qWarning() << "Plugins directory does not exist:" << pluginsDir;
@@ -38,10 +42,24 @@ void PluginManager::loadAllPlugins(const QString& pluginsDir, IAppContext* conte
 
         const QString filePath = fileInfo.absoluteFilePath();
         auto loader = QSharedPointer<QPluginLoader>::create(filePath);
+        PluginRuntimeInfo runtimeInfo;
+        runtimeInfo.filePath = filePath;
+        runtimeInfo.metaInfo = metaInfoFromLoader(*loader);
+
+        if (configManager
+            && !configManager->isPluginEnabled(runtimeInfo.metaInfo.id, filePath)) {
+            runtimeInfo.status = PluginRuntimeInfo::Status::Disabled;
+            runtimeInfo.reason = QStringLiteral("Disabled in app config");
+            m_pluginInfos.push_back(runtimeInfo);
+            continue;
+        }
 
         QString skipReason;
         if (!supportsCurrentPlatform(*loader, &skipReason)) {
             qInfo() << "Skipped plugin:" << filePath << skipReason;
+            runtimeInfo.status = PluginRuntimeInfo::Status::Skipped;
+            runtimeInfo.reason = skipReason;
+            m_pluginInfos.push_back(runtimeInfo);
             Q_EMIT pluginSkipped(filePath, skipReason);
             continue;
         }
@@ -50,6 +68,9 @@ void PluginManager::loadAllPlugins(const QString& pluginsDir, IAppContext* conte
         if (!instance) {
             const QString reason = loader->errorString();
             qWarning() << "Failed to load plugin:" << filePath << reason;
+            runtimeInfo.status = PluginRuntimeInfo::Status::Failed;
+            runtimeInfo.reason = reason;
+            m_pluginInfos.push_back(runtimeInfo);
             Q_EMIT pluginLoadFailed(filePath, reason);
             continue;
         }
@@ -59,6 +80,9 @@ void PluginManager::loadAllPlugins(const QString& pluginsDir, IAppContext* conte
             const QString reason = QStringLiteral("Object does not implement IPlugin");
             qWarning() << "Invalid plugin:" << filePath << reason;
             loader->unload();
+            runtimeInfo.status = PluginRuntimeInfo::Status::Failed;
+            runtimeInfo.reason = reason;
+            m_pluginInfos.push_back(runtimeInfo);
             Q_EMIT pluginLoadFailed(filePath, reason);
             continue;
         }
@@ -67,12 +91,18 @@ void PluginManager::loadAllPlugins(const QString& pluginsDir, IAppContext* conte
             const QString reason = QStringLiteral("Plugin initialize returned false");
             qWarning() << "Plugin initialize failed:" << filePath;
             loader->unload();
+            runtimeInfo.status = PluginRuntimeInfo::Status::Failed;
+            runtimeInfo.reason = reason;
+            m_pluginInfos.push_back(runtimeInfo);
             Q_EMIT pluginLoadFailed(filePath, reason);
             continue;
         }
 
         const PluginMetaInfo meta = plugin->metaInfo();
+        runtimeInfo.metaInfo = meta;
+        runtimeInfo.status = PluginRuntimeInfo::Status::Loaded;
         m_plugins.push_back({loader, plugin});
+        m_pluginInfos.push_back(runtimeInfo);
         Q_EMIT pluginLoaded(meta.id, meta.name);
     }
 }
@@ -117,6 +147,11 @@ QList<IPlugin*> PluginManager::plugins() const
 int PluginManager::loadedPluginCount() const
 {
     return m_plugins.size();
+}
+
+QList<PluginRuntimeInfo> PluginManager::pluginInfos() const
+{
+    return m_pluginInfos.toList();
 }
 
 bool PluginManager::isPluginFile(const QString& fileName)
@@ -177,6 +212,28 @@ bool PluginManager::supportsCurrentPlatform(const QPluginLoader& loader, QString
             .arg(currentPlatform, platforms.join(QStringLiteral(", ")));
     }
     return false;
+}
+
+PluginMetaInfo PluginManager::metaInfoFromLoader(const QPluginLoader& loader)
+{
+    const QJsonObject root = loader.metaData();
+    const QJsonObject pluginMeta = root.value(QStringLiteral("MetaData")).toObject();
+
+    PluginMetaInfo metaInfo;
+    metaInfo.id = pluginMeta.value(QStringLiteral("id")).toString();
+    metaInfo.name = pluginMeta.value(QStringLiteral("name")).toString();
+    metaInfo.description = pluginMeta.value(QStringLiteral("description")).toString();
+    metaInfo.version = pluginMeta.value(QStringLiteral("version")).toString();
+    metaInfo.author = pluginMeta.value(QStringLiteral("author")).toString();
+    metaInfo.category = pluginMeta.value(QStringLiteral("category")).toString();
+    metaInfo.requiredHostVersion = pluginMeta.value(QStringLiteral("requiredHostVersion")).toString();
+
+    const QJsonArray supportedPlatforms = pluginMeta.value(QStringLiteral("supportedPlatforms")).toArray();
+    for (const QJsonValue& value : supportedPlatforms) {
+        metaInfo.supportedPlatforms.append(value.toString());
+    }
+
+    return metaInfo;
 }
 
 } // namespace Vitals

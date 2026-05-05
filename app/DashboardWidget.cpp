@@ -11,6 +11,25 @@
 
 namespace Vitals {
 
+namespace {
+
+QString formatBytes(double bytes)
+{
+    static const char* suffixes[] = {"B", "KB", "MB", "GB", "TB"};
+
+    double value = bytes;
+    int suffixIndex = 0;
+    while (value >= 1024.0 && suffixIndex < 4) {
+        value /= 1024.0;
+        ++suffixIndex;
+    }
+
+    return QStringLiteral("%1 %2").arg(value, 0, 'f', suffixIndex == 0 ? 0 : 1)
+        .arg(QString::fromLatin1(suffixes[suffixIndex]));
+}
+
+} // namespace
+
 DashboardWidget::DashboardWidget(QWidget* parent)
     : QWidget(parent)
 {
@@ -48,6 +67,8 @@ void DashboardWidget::bindMetricCenter(MetricCenter* metricCenter)
 {
     connect(metricCenter, &MetricCenter::metricUpdated,
         this, &DashboardWidget::updateMetric);
+    connect(metricCenter, &MetricCenter::metricRemoved,
+        this, &DashboardWidget::removeMetric);
 }
 
 void DashboardWidget::updateMetric(const MetricValue& value)
@@ -81,6 +102,32 @@ CardWidget* DashboardWidget::ensureCard(const QString& key)
     return card;
 }
 
+void DashboardWidget::removeMetric(const QString& key)
+{
+    CardWidget* card = m_cards.take(key);
+    if (!card) {
+        return;
+    }
+
+    m_grid->removeWidget(card);
+    card->deleteLater();
+    relayoutCards();
+
+    if (m_cards.size() <= 1 && m_cards.contains(QStringLiteral("framework.status"))) {
+        m_statusLabel->setText(QStringLiteral("Waiting for metrics"));
+    }
+}
+
+void DashboardWidget::relayoutCards()
+{
+    const QList<CardWidget*> cards = m_cards.values();
+    int index = 0;
+    for (CardWidget* card : cards) {
+        m_grid->addWidget(card, index / 3, index % 3);
+        ++index;
+    }
+}
+
 QString DashboardWidget::displayTitleForMetric(const QString& key) const
 {
     if (key == QStringLiteral("framework.status")) return QStringLiteral("Framework");
@@ -92,6 +139,8 @@ QString DashboardWidget::displayTitleForMetric(const QString& key) const
     if (key == QStringLiteral("disk.read.speed")) return QStringLiteral("Disk Read");
     if (key == QStringLiteral("disk.write.speed")) return QStringLiteral("Disk Write");
     if (key == QStringLiteral("battery.level.percent")) return QStringLiteral("Battery");
+    if (key == QStringLiteral("system.memory.total.bytes")) return QStringLiteral("Memory");
+    if (key == QStringLiteral("system.gpu.model")) return QStringLiteral("GPU");
     if (key == QStringLiteral("system.uptime.seconds")) return QStringLiteral("Uptime");
     return key;
 }
@@ -105,13 +154,10 @@ QString DashboardWidget::displayValueForMetric(const MetricValue& value) const
     }
     if (key.endsWith(QStringLiteral(".speed"))) {
         const double bytesPerSecond = value.value.toDouble();
-        if (bytesPerSecond >= 1024.0 * 1024.0) {
-            return QStringLiteral("%1 MB/s").arg(bytesPerSecond / 1024.0 / 1024.0, 0, 'f', 1);
-        }
-        if (bytesPerSecond >= 1024.0) {
-            return QStringLiteral("%1 KB/s").arg(bytesPerSecond / 1024.0, 0, 'f', 1);
-        }
-        return QStringLiteral("%1 B/s").arg(bytesPerSecond, 0, 'f', 0);
+        return QStringLiteral("%1/s").arg(formatBytes(bytesPerSecond));
+    }
+    if (key.endsWith(QStringLiteral(".bytes"))) {
+        return formatBytes(value.value.toDouble());
     }
     if (key == QStringLiteral("system.uptime.seconds")) {
         const qint64 seconds = value.value.toLongLong();
