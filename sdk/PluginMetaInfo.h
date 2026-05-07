@@ -15,7 +15,7 @@ struct PluginMetaInfo
     QString category;
     QStringList supportedPlatforms;
     QString requiredHostVersion;
+    bool supportsTaskbarDisplay = false;
 };
 
 } // namespace Vitals
-

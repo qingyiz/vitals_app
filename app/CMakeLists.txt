@@ -19,7 +19,7 @@ add_executable(VitalsApp
     platform/taskbar/WindowsTaskbarIndicator.h
     platform/taskbar/WindowsTaskbarIndicator.cpp
     platform/taskbar/MacTaskbarIndicator.h
-    platform/taskbar/MacTaskbarIndicator.cpp
+    platform/taskbar/MacTaskbarIndicator.mm
     platform/taskbar/LinuxTaskbarIndicator.h
     platform/taskbar/LinuxTaskbarIndicator.cpp
 )
@@ -40,3 +40,7 @@ target_link_libraries(VitalsApp
         Vitals::Sdk
         ${VITALS_QT_LIBS}
 )
+
+if(APPLE)
+    target_link_libraries(VitalsApp PRIVATE "-framework Cocoa")
+endif()

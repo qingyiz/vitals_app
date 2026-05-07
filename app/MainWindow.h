@@ -53,6 +53,9 @@ private:
     /// Clears cached metrics that belong to the currently loaded plugins.
     void clearLoadedPluginMetrics();
 
+    /// Rebuilds the current set of taskbar display providers from loaded plugins.
+    void syncTaskbarDisplays();
+
     /// Adds a page to both the navigation list and stacked content area.
     void addPage(const QString& id, const QString& title, QWidget* page, const QIcon& icon = QIcon());
 

@@ -38,6 +38,7 @@ public:
 
 Q_SIGNALS:
     void pluginEnabledChanged(const QString& pluginId, const QString& filePath, bool enabled);
+    void pluginTaskbarVisibilityChanged(const QString& pluginId, const QString& filePath, bool enabled);
 
 private:
     QWidget* createPluginCard(const PluginRuntimeInfo& pluginInfo);

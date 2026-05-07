@@ -10,6 +10,39 @@
 
 namespace Vitals {
 
+namespace {
+
+QString formatMemoryCompact(qint64 bytes)
+{
+    const double gib = static_cast<double>(bytes) / 1024.0 / 1024.0 / 1024.0;
+    return QStringLiteral("%1G").arg(gib, 0, 'f', gib >= 10.0 ? 0 : 1);
+}
+
+QString formatUptimeCompact(qint64 seconds)
+{
+    const qint64 days = seconds / 86400;
+    if (days > 0) {
+        return QStringLiteral("%1d").arg(days);
+    }
+
+    const qint64 hours = seconds / 3600;
+    if (hours > 0) {
+        return QStringLiteral("%1h").arg(hours);
+    }
+
+    return QStringLiteral("%1m").arg(seconds / 60);
+}
+
+QString formatUptimeVerbose(qint64 seconds)
+{
+    const qint64 days = seconds / 86400;
+    const qint64 hours = (seconds % 86400) / 3600;
+    const qint64 minutes = (seconds % 3600) / 60;
+    return QStringLiteral("%1d %2h %3m").arg(days).arg(hours).arg(minutes);
+}
+
+} // namespace
+
 SystemInfoPlugin::SystemInfoPlugin(QObject* parent)
     : QObject(parent)
     , m_timer(new QTimer(this))
@@ -30,7 +63,8 @@ PluginMetaInfo SystemInfoPlugin::metaInfo() const
         QStringLiteral("Vitals"),
         QStringLiteral("monitor"),
         {QStringLiteral("macos")},
-        QStringLiteral("0.1.0")
+        QStringLiteral("0.1.0"),
+        true
     };
 }
 
@@ -110,6 +144,43 @@ QWidget* SystemInfoPlugin::createPanel(QWidget* parent)
     panel->applySnapshot(m_lastSnapshot);
     m_panel = panel;
     return panel;
+}
+
+QString SystemInfoPlugin::taskbarDisplayText(const QHash<QString, MetricValue>& latestValues) const
+{
+    const MetricValue memoryValue = latestValues.value(QStringLiteral("system.memory.total.bytes"));
+    const MetricValue uptimeValue = latestValues.value(QStringLiteral("system.uptime.seconds"));
+    if (!memoryValue.value.isValid() || !uptimeValue.value.isValid()) {
+        return QString();
+    }
+
+    return QStringLiteral("%1 %2")
+        .arg(formatMemoryCompact(memoryValue.value.toLongLong()))
+        .arg(formatUptimeCompact(uptimeValue.value.toLongLong()));
+}
+
+QString SystemInfoPlugin::taskbarDisplayTooltip(const QHash<QString, MetricValue>& latestValues) const
+{
+    const QString device = latestValues.value(QStringLiteral("system.device.name")).value.toString();
+    const QString os = latestValues.value(QStringLiteral("system.os.version")).value.toString();
+    const QString cpu = latestValues.value(QStringLiteral("system.cpu.model")).value.toString();
+    const QString gpu = latestValues.value(QStringLiteral("system.gpu.model")).value.toString();
+    const qint64 memory = latestValues.value(QStringLiteral("system.memory.total.bytes")).value.toLongLong();
+    const qint64 uptime = latestValues.value(QStringLiteral("system.uptime.seconds")).value.toLongLong();
+
+    QStringList parts;
+    if (!device.isEmpty()) parts.append(device);
+    if (!os.isEmpty()) parts.append(os);
+    if (!cpu.isEmpty()) parts.append(cpu);
+    if (!gpu.isEmpty()) parts.append(gpu);
+    if (memory > 0) parts.append(formatMemoryCompact(memory));
+    if (uptime > 0) parts.append(formatUptimeVerbose(uptime));
+    return parts.join(QStringLiteral(" | "));
+}
+
+bool SystemInfoPlugin::isTaskbarDisplayEnabledByDefault() const
+{
+    return true;
 }
 
 void SystemInfoPlugin::collectAndPublish()

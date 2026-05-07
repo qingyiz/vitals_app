@@ -2,19 +2,40 @@
 
 #include "MetricData.h"
 
+#include "ITaskbarDisplayPlugin.h"
+
 #include <QColor>
 #include <QHash>
+#include <QList>
 #include <QObject>
 #include <QStringList>
 
 class QAction;
 class QMenu;
+class QPixmap;
 class QSystemTrayIcon;
 class QWidget;
 
 namespace Vitals {
 
 class MetricCenter;
+
+/**
+ * \if ENGLISH
+ * @brief One loaded plugin contribution that may appear in the taskbar surface
+ * \endif
+ *
+ * \if CHINESE
+ * @brief 一个可能出现在任务栏表面中的已加载插件显示贡献
+ * \endif
+ */
+struct TaskbarPluginDisplay
+{
+    QString pluginId;
+    QString pluginName;
+    QString filePath;
+    ITaskbarDisplayPlugin* provider = nullptr;
+};
 
 /**
  * \if ENGLISH
@@ -51,7 +72,7 @@ public:
      * @brief 创建托盘资源并绑定宿主级交互动作
      * \endif
      */
-    void initialize(QWidget* mainWindow);
+    virtual void initialize(QWidget* mainWindow);
 
     /**
      * \if ENGLISH
@@ -63,6 +84,23 @@ public:
      * \endif
      */
     void bindMetricCenter(MetricCenter* metricCenter);
+
+    /**
+     * \if ENGLISH
+     * @brief Replaces the current set of plugin-provided taskbar display sources
+     * \endif
+     *
+     * \if CHINESE
+     * @brief 替换当前参与任务栏显示的插件来源集合
+     * \endif
+     */
+    void setPluginDisplays(const QList<TaskbarPluginDisplay>& pluginDisplays);
+
+    /// Emits the host-level show request.
+    void emitShowRequested();
+
+    /// Emits the host-level quit request.
+    void emitQuitRequested();
 
 Q_SIGNALS:
     void showRequested();
@@ -84,13 +122,40 @@ protected:
     /// Returns the accent color used when rendering the dynamic icon.
     virtual QColor accentColor() const;
 
+    /// Returns whether the platform prefers plain text rendering without a filled badge.
+    virtual bool prefersTextOnlyDisplay() const;
+
+    /// Returns whether the platform expects monochrome text for system tinting.
+    virtual bool prefersSystemTintedText() const;
+
+    /// Returns the maximum number of characters that should be rendered visibly.
+    virtual int maximumVisibleLabelLength() const;
+
+    /// Returns the host window associated with this indicator.
+    QWidget* mainWindow() const;
+
+    /// Binds the host window without creating any tray resources.
+    void setMainWindow(QWidget* mainWindow);
+
+    /// Returns whether any plugin currently participates in taskbar display.
+    bool hasPluginDisplays() const;
+
+    /// Returns the current compact text that should be shown in the taskbar surface.
+    QString currentLabel() const;
+
+    /// Returns the current tooltip text for the active taskbar state.
+    QString currentTooltip() const;
+
     /// Formats one metric value for human-readable summary display.
     QString formatMetricValue(const MetricValue& value) const;
+    QString humanizedMetricName(const QString& key) const;
+    QPixmap buildPixmap(const QString& label) const;
+
+    virtual void refresh();
 
 private:
     void handleMetricUpdated(const MetricValue& value);
     void handleMetricRemoved(const QString& key);
-    void refresh();
     QStringList orderedMetricKeys() const;
     QIcon buildIcon(const QString& label) const;
 
@@ -101,6 +166,7 @@ private:
     QAction* m_showAction = nullptr;
     QAction* m_quitAction = nullptr;
     QHash<QString, MetricValue> m_latestValues;
+    QList<TaskbarPluginDisplay> m_pluginDisplays;
 };
 
 } // namespace Vitals

@@ -3,6 +3,7 @@
 #include "AppContext.h"
 #include "DashboardWidget.h"
 #include "IPanelPlugin.h"
+#include "ITaskbarDisplayPlugin.h"
 #include "NavigationWidget.h"
 #include "PluginCenterWidget.h"
 #include "config/ConfigManager.h"
@@ -137,6 +138,7 @@ void MainWindow::loadPlugins()
 
     const QString pluginsDir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("plugins"));
     m_pluginManager->loadAllPlugins(pluginsDir, m_appContext, m_configManager);
+    syncTaskbarDisplays();
     if (m_pluginCenterPage) {
         m_pluginCenterPage->setPluginInfos(m_pluginManager->pluginInfos());
     }
@@ -169,6 +171,43 @@ void MainWindow::clearLoadedPluginMetrics()
             m_metricCenter->removePluginMetrics(pluginId);
         }
     }
+}
+
+void MainWindow::syncTaskbarDisplays()
+{
+    QList<TaskbarPluginDisplay> displays;
+    const QList<PluginRuntimeInfo> pluginInfos = m_pluginManager->pluginInfos();
+
+    for (IPlugin* plugin : m_pluginManager->plugins()) {
+        auto* provider = dynamic_cast<ITaskbarDisplayPlugin*>(plugin);
+        if (!provider) {
+            continue;
+        }
+
+        const PluginMetaInfo meta = plugin->metaInfo();
+        QString filePath;
+        for (const PluginRuntimeInfo& pluginInfo : pluginInfos) {
+            if (pluginInfo.metaInfo.id == meta.id
+                && pluginInfo.status == PluginRuntimeInfo::Status::Loaded) {
+                filePath = pluginInfo.filePath;
+                break;
+            }
+        }
+
+        if (!m_configManager->isPluginTaskbarEnabled(
+                meta.id, filePath, provider->isTaskbarDisplayEnabledByDefault())) {
+            continue;
+        }
+
+        displays.append({
+            meta.id,
+            meta.name.isEmpty() ? meta.id : meta.name,
+            filePath,
+            provider
+        });
+    }
+
+    m_taskbarIndicator->setPluginDisplays(displays);
 }
 
 void MainWindow::addPage(const QString& id, const QString& title, QWidget* page, const QIcon& icon)
@@ -207,6 +246,12 @@ QWidget* MainWindow::createPluginManagerPage()
         [this](const QString& pluginId, const QString& filePath, bool enabled) {
             m_configManager->setPluginEnabled(pluginId, filePath, enabled);
             reloadPlugins();
+        });
+    connect(m_pluginCenterPage, &PluginCenterWidget::pluginTaskbarVisibilityChanged, this,
+        [this](const QString& pluginId, const QString& filePath, bool enabled) {
+            m_configManager->setPluginTaskbarEnabled(pluginId, filePath, enabled);
+            syncTaskbarDisplays();
+            statusBar()->showMessage(QStringLiteral("Updated menu bar visibility for %1").arg(pluginId), 3000);
         });
     return m_pluginCenterPage;
 }

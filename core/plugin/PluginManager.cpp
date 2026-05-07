@@ -227,6 +227,7 @@ PluginMetaInfo PluginManager::metaInfoFromLoader(const QPluginLoader& loader)
     metaInfo.author = pluginMeta.value(QStringLiteral("author")).toString();
     metaInfo.category = pluginMeta.value(QStringLiteral("category")).toString();
     metaInfo.requiredHostVersion = pluginMeta.value(QStringLiteral("requiredHostVersion")).toString();
+    metaInfo.supportsTaskbarDisplay = pluginMeta.value(QStringLiteral("supportsTaskbarDisplay")).toBool(false);
 
     const QJsonArray supportedPlatforms = pluginMeta.value(QStringLiteral("supportedPlatforms")).toArray();
     for (const QJsonValue& value : supportedPlatforms) {

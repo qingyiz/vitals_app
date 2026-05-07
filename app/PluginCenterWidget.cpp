@@ -108,21 +108,34 @@ QWidget* PluginCenterWidget::createPluginCard(const PluginRuntimeInfo& pluginInf
     auto* title = new QLabel(pluginName, card);
     title->setObjectName(QStringLiteral("panelTitle"));
 
+    auto* toggleContainer = new QWidget(card);
+    auto* toggleLayout = new QHBoxLayout(toggleContainer);
+    toggleLayout->setContentsMargins(0, 0, 0, 0);
+    toggleLayout->setSpacing(12);
+
+    auto* enabledLabel = new QLabel(QStringLiteral("Enabled"), card);
+    enabledLabel->setObjectName(QStringLiteral("panelBody"));
     auto* enabledSwitch = new ToggleSwitch(card);
     enabledSwitch->setChecked(m_configManager->isPluginEnabled(pluginInfo.metaInfo.id, pluginInfo.filePath));
     connect(enabledSwitch, &ToggleSwitch::toggled, card, [this, pluginInfo](bool checked) {
         Q_EMIT pluginEnabledChanged(pluginInfo.metaInfo.id, pluginInfo.filePath, checked);
     });
-
-    auto* enabledLabel = new QLabel(QStringLiteral("Enabled"), card);
-    enabledLabel->setObjectName(QStringLiteral("panelBody"));
-
-    auto* toggleContainer = new QWidget(card);
-    auto* toggleLayout = new QHBoxLayout(toggleContainer);
-    toggleLayout->setContentsMargins(0, 0, 0, 0);
-    toggleLayout->setSpacing(8);
     toggleLayout->addWidget(enabledLabel);
     toggleLayout->addWidget(enabledSwitch);
+
+    if (pluginInfo.metaInfo.supportsTaskbarDisplay) {
+        auto* taskbarLabel = new QLabel(QStringLiteral("Menu Bar"), card);
+        taskbarLabel->setObjectName(QStringLiteral("panelBody"));
+        auto* taskbarSwitch = new ToggleSwitch(card);
+        taskbarSwitch->setChecked(
+            m_configManager->isPluginTaskbarEnabled(pluginInfo.metaInfo.id, pluginInfo.filePath, true));
+        connect(taskbarSwitch, &ToggleSwitch::toggled, card, [this, pluginInfo](bool checked) {
+            Q_EMIT pluginTaskbarVisibilityChanged(pluginInfo.metaInfo.id, pluginInfo.filePath, checked);
+        });
+        toggleLayout->addSpacing(6);
+        toggleLayout->addWidget(taskbarLabel);
+        toggleLayout->addWidget(taskbarSwitch);
+    }
 
     auto* status = new QLabel(statusText(pluginInfo.status), card);
     status->setObjectName(QStringLiteral("pluginStatusPill"));
@@ -136,12 +149,13 @@ QWidget* PluginCenterWidget::createPluginCard(const PluginRuntimeInfo& pluginInf
     header->addWidget(status);
 
     auto* meta = createBodyLabel(
-        QStringLiteral("ID: %1\nCategory: %2\nVersion: %3\nAuthor: %4\nSupported Platforms: %5")
+        QStringLiteral("ID: %1\nCategory: %2\nVersion: %3\nAuthor: %4\nSupported Platforms: %5\nMenu Bar: %6")
             .arg(pluginInfo.metaInfo.id.isEmpty() ? QStringLiteral("--") : pluginInfo.metaInfo.id)
             .arg(pluginInfo.metaInfo.category.isEmpty() ? QStringLiteral("--") : pluginInfo.metaInfo.category)
             .arg(pluginInfo.metaInfo.version.isEmpty() ? QStringLiteral("--") : pluginInfo.metaInfo.version)
             .arg(pluginInfo.metaInfo.author.isEmpty() ? QStringLiteral("--") : pluginInfo.metaInfo.author)
-            .arg(supportedPlatformsText(pluginInfo)),
+            .arg(supportedPlatformsText(pluginInfo))
+            .arg(pluginInfo.metaInfo.supportsTaskbarDisplay ? QStringLiteral("Supported") : QStringLiteral("Not supported")),
         QStringLiteral("panelBody"), card);
 
     auto* path = createBodyLabel(
