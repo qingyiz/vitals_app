@@ -20,7 +20,8 @@ PluginMetaInfo HelloPlugin::metaInfo() const
         QStringLiteral("Vitals"),
         QStringLiteral("panel"),
         {QStringLiteral("windows"), QStringLiteral("macos"), QStringLiteral("linux")},
-        QStringLiteral("0.1.0")
+        QStringLiteral("0.1.0"),
+        false
     };
 }
 

@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "author": "Vitals",
   "category": "panel",
+  "supportsTaskbarDisplay": false,
   "supportedPlatforms": ["windows", "macos", "linux"],
   "requiredHostVersion": "0.1.0"
 }
-
