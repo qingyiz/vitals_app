@@ -1,0 +1,33 @@
+add_library(CpuMonitorPlugin MODULE
+    CpuMonitorPlugin.h
+    CpuMonitorPlugin.cpp
+    CpuPanelWidget.h
+    CpuPanelWidget.cpp
+    ICpuCollector.h
+    CpuCollectorFactory.h
+    CpuCollectorFactory.cpp
+    cpu_plugin.json
+)
+
+target_sources(CpuMonitorPlugin
+    PRIVATE
+        platform/macos/MacCpuCollector.h
+        platform/macos/MacCpuCollector.mm
+)
+
+target_include_directories(CpuMonitorPlugin
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+target_link_libraries(CpuMonitorPlugin
+    PRIVATE
+        Vitals::Sdk
+        Vitals::Widgets
+        ${VITALS_QT_LIBS}
+)
+
+set_target_properties(CpuMonitorPlugin PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${VITALS_OUTPUT_DIR}/plugins"
+    RUNTIME_OUTPUT_DIRECTORY "${VITALS_OUTPUT_DIR}/plugins"
+)
