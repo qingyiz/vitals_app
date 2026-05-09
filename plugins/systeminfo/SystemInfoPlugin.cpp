@@ -183,6 +183,49 @@ bool SystemInfoPlugin::isTaskbarDisplayEnabledByDefault() const
     return true;
 }
 
+TaskbarDetailContent SystemInfoPlugin::taskbarDetailContent(const QHash<QString, MetricValue>& latestValues) const
+{
+    const QString device = latestValues.value(QStringLiteral("system.device.name")).value.toString();
+    const QString os = latestValues.value(QStringLiteral("system.os.version")).value.toString();
+    const QString cpu = latestValues.value(QStringLiteral("system.cpu.model")).value.toString();
+    const QString gpu = latestValues.value(QStringLiteral("system.gpu.model")).value.toString();
+    const qint64 memory = latestValues.value(QStringLiteral("system.memory.total.bytes")).value.toLongLong();
+    const qint64 uptime = latestValues.value(QStringLiteral("system.uptime.seconds")).value.toLongLong();
+
+    if (device.isEmpty() && os.isEmpty() && cpu.isEmpty() && gpu.isEmpty() && memory <= 0 && uptime <= 0) {
+        return {};
+    }
+
+    TaskbarDetailContent content;
+    content.title = QStringLiteral("System Information");
+    content.subtitle = os;
+    content.primaryLabel = QStringLiteral("Device");
+    content.primaryValue = device.isEmpty() ? QStringLiteral("Vitals") : device;
+    content.accentColor = QStringLiteral("#64d2ff");
+
+    content.badges = {
+        {QStringLiteral("MEMORY"), memory > 0 ? formatMemoryCompact(memory) : QStringLiteral("--")},
+        {QStringLiteral("UPTIME"), uptime > 0 ? formatUptimeCompact(uptime) : QStringLiteral("--")}
+    };
+
+    content.sections.append({
+        QStringLiteral("Hardware"),
+        {
+            {QStringLiteral("CPU"), cpu.isEmpty() ? QStringLiteral("--") : cpu, QString(), -1.0, QString()},
+            {QStringLiteral("GPU"), gpu.isEmpty() ? QStringLiteral("--") : gpu, QString(), -1.0, QString()},
+            {QStringLiteral("Memory"), memory > 0 ? formatMemoryCompact(memory) : QStringLiteral("--"), QString(), -1.0, QString()}
+        }
+    });
+    content.sections.append({
+        QStringLiteral("System"),
+        {
+            {QStringLiteral("Operating System"), os.isEmpty() ? QStringLiteral("--") : os, QString(), -1.0, QString()},
+            {QStringLiteral("Uptime"), uptime > 0 ? formatUptimeVerbose(uptime) : QStringLiteral("--"), QString(), -1.0, QString()}
+        }
+    });
+    return content;
+}
+
 void SystemInfoPlugin::collectAndPublish()
 {
     if (!m_collector) {

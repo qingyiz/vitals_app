@@ -1,6 +1,7 @@
 #include "platform/taskbar/TaskbarIndicator.h"
 
 #include "metric/MetricCenter.h"
+#include "platform/taskbar/TaskbarMenuDetailWidget.h"
 
 #include <QAction>
 #include <QApplication>
@@ -13,6 +14,7 @@
 #include <QPixmap>
 #include <QRectF>
 #include <QSystemTrayIcon>
+#include <QWidgetAction>
 #include <QtMath>
 
 namespace Vitals {
@@ -178,14 +180,10 @@ void TaskbarIndicator::initialize(QWidget* mainWindow)
     }
 
     m_menu = new QMenu(m_mainWindow);
-    m_summaryAction = m_menu->addAction(QStringLiteral("Vitals: %1").arg(idleText()));
-    m_summaryAction->setEnabled(false);
-    m_menu->addSeparator();
-    m_showAction = m_menu->addAction(QStringLiteral("Show Vitals"));
-    m_quitAction = m_menu->addAction(QStringLiteral("Quit"));
-
-    connect(m_showAction, &QAction::triggered, this, &TaskbarIndicator::showRequested);
-    connect(m_quitAction, &QAction::triggered, this, &TaskbarIndicator::quitRequested);
+    m_detailWidget = new TaskbarMenuDetailWidget(m_menu);
+    m_detailAction = new QWidgetAction(m_menu);
+    m_detailAction->setDefaultWidget(m_detailWidget);
+    m_menu->addAction(m_detailAction);
 
     m_trayIcon = new QSystemTrayIcon(this);
     m_trayIcon->setContextMenu(m_menu);
@@ -345,6 +343,37 @@ QString TaskbarIndicator::currentTooltip() const
     return tooltipText(m_latestValues);
 }
 
+QList<TaskbarDetailContent> TaskbarIndicator::currentDetailContents() const
+{
+    QList<TaskbarDetailContent> contents;
+
+    for (const TaskbarPluginDisplay& display : m_pluginDisplays) {
+        TaskbarDetailContent content;
+        if (display.detailProvider) {
+            content = display.detailProvider->taskbarDetailContent(m_latestValues);
+        }
+
+        if (content.isEmpty() && display.provider) {
+            const QString label = display.provider->taskbarDisplayText(m_latestValues).trimmed();
+            const QString tooltip = display.provider->taskbarDisplayTooltip(m_latestValues).trimmed();
+            if (!label.isEmpty() || !tooltip.isEmpty()) {
+                content.title = display.pluginName;
+                content.primaryValue = label;
+                content.subtitle = tooltip;
+            }
+        }
+
+        if (!content.isEmpty()) {
+            if (content.title.isEmpty()) {
+                content.title = display.pluginName;
+            }
+            contents.append(content);
+        }
+    }
+
+    return contents;
+}
+
 void TaskbarIndicator::emitShowRequested()
 {
     Q_EMIT showRequested();
@@ -405,6 +434,9 @@ void TaskbarIndicator::refresh()
         if (m_summaryAction) {
             m_summaryAction->setText(QStringLiteral("Vitals: taskbar display disabled"));
         }
+        if (m_detailWidget) {
+            m_detailWidget->setContents({});
+        }
         return;
     }
 
@@ -418,6 +450,9 @@ void TaskbarIndicator::refresh()
 
     if (m_summaryAction) {
         m_summaryAction->setText(tooltip.split(QStringLiteral("\n")).join(QStringLiteral("  |  ")));
+    }
+    if (m_detailWidget) {
+        m_detailWidget->setContents(currentDetailContents());
     }
 }
 

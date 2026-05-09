@@ -14,6 +14,8 @@ add_executable(VitalsApp
     ToggleSwitch.cpp
     platform/taskbar/TaskbarIndicator.h
     platform/taskbar/TaskbarIndicator.cpp
+    platform/taskbar/TaskbarMenuDetailWidget.h
+    platform/taskbar/TaskbarMenuDetailWidget.cpp
     platform/taskbar/TaskbarIndicatorFactory.h
     platform/taskbar/TaskbarIndicatorFactory.cpp
     platform/taskbar/WindowsTaskbarIndicator.h

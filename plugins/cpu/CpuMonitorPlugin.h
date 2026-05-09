@@ -2,6 +2,7 @@
 
 #include "IMonitorPlugin.h"
 #include "IPanelPlugin.h"
+#include "ITaskbarDetailPlugin.h"
 #include "ITaskbarDisplayPlugin.h"
 #include "ICpuCollector.h"
 
@@ -16,11 +17,11 @@ namespace Vitals {
 class IAppContext;
 class CpuPanelWidget;
 
-class CpuMonitorPlugin : public QObject, public IMonitorPlugin, public IPanelPlugin, public ITaskbarDisplayPlugin
+class CpuMonitorPlugin : public QObject, public IMonitorPlugin, public IPanelPlugin, public ITaskbarDisplayPlugin, public ITaskbarDetailPlugin
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID Vitals_IPlugin_iid FILE "cpu_plugin.json")
-    Q_INTERFACES(Vitals::IPlugin Vitals::IMonitorPlugin Vitals::IPanelPlugin Vitals::ITaskbarDisplayPlugin)
+    Q_INTERFACES(Vitals::IPlugin Vitals::IMonitorPlugin Vitals::IPanelPlugin Vitals::ITaskbarDisplayPlugin Vitals::ITaskbarDetailPlugin)
 
 public:
     explicit CpuMonitorPlugin(QObject* parent = nullptr);
@@ -44,6 +45,7 @@ public:
     QString taskbarDisplayText(const QHash<QString, MetricValue>& latestValues) const override;
     QString taskbarDisplayTooltip(const QHash<QString, MetricValue>& latestValues) const override;
     bool isTaskbarDisplayEnabledByDefault() const override;
+    TaskbarDetailContent taskbarDetailContent(const QHash<QString, MetricValue>& latestValues) const override;
 
 private:
     void collectAndPublish();

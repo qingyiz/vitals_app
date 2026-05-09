@@ -2,6 +2,7 @@
 
 #include "MetricData.h"
 
+#include "ITaskbarDetailPlugin.h"
 #include "ITaskbarDisplayPlugin.h"
 
 #include <QColor>
@@ -14,11 +15,13 @@ class QAction;
 class QMenu;
 class QPixmap;
 class QSystemTrayIcon;
+class QWidgetAction;
 class QWidget;
 
 namespace Vitals {
 
 class MetricCenter;
+class TaskbarMenuDetailWidget;
 
 /**
  * \if ENGLISH
@@ -35,6 +38,7 @@ struct TaskbarPluginDisplay
     QString pluginName;
     QString filePath;
     ITaskbarDisplayPlugin* provider = nullptr;
+    ITaskbarDetailPlugin* detailProvider = nullptr;
 };
 
 /**
@@ -146,6 +150,9 @@ protected:
     /// Returns the current tooltip text for the active taskbar state.
     QString currentTooltip() const;
 
+    /// Returns structured detail content for the current menu snapshot.
+    QList<TaskbarDetailContent> currentDetailContents() const;
+
     /// Formats one metric value for human-readable summary display.
     QString formatMetricValue(const MetricValue& value) const;
     QString humanizedMetricName(const QString& key) const;
@@ -162,6 +169,8 @@ private:
     QWidget* m_mainWindow = nullptr;
     QSystemTrayIcon* m_trayIcon = nullptr;
     QMenu* m_menu = nullptr;
+    QWidgetAction* m_detailAction = nullptr;
+    TaskbarMenuDetailWidget* m_detailWidget = nullptr;
     QAction* m_summaryAction = nullptr;
     QAction* m_showAction = nullptr;
     QAction* m_quitAction = nullptr;

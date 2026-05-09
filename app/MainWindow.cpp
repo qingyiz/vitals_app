@@ -3,6 +3,7 @@
 #include "AppContext.h"
 #include "DashboardWidget.h"
 #include "IPanelPlugin.h"
+#include "ITaskbarDetailPlugin.h"
 #include "ITaskbarDisplayPlugin.h"
 #include "NavigationWidget.h"
 #include "PluginCenterWidget.h"
@@ -203,7 +204,8 @@ void MainWindow::syncTaskbarDisplays()
             meta.id,
             meta.name.isEmpty() ? meta.id : meta.name,
             filePath,
-            provider
+            provider,
+            dynamic_cast<ITaskbarDetailPlugin*>(plugin)
         });
     }
 

@@ -141,7 +141,7 @@ QString CpuMonitorPlugin::taskbarDisplayText(const QHash<QString, MetricValue>& 
         return QString();
     }
 
-    return QStringLiteral("CPU\n%1").arg(formatPercentCompact(usageValue.value.toDouble()));
+    return QStringLiteral("CPU:\n%1").arg(formatPercentCompact(usageValue.value.toDouble()));
 }
 
 QString CpuMonitorPlugin::taskbarDisplayTooltip(const QHash<QString, MetricValue>& latestValues) const
@@ -175,6 +175,55 @@ QString CpuMonitorPlugin::taskbarDisplayTooltip(const QHash<QString, MetricValue
 bool CpuMonitorPlugin::isTaskbarDisplayEnabledByDefault() const
 {
     return true;
+}
+
+TaskbarDetailContent CpuMonitorPlugin::taskbarDetailContent(const QHash<QString, MetricValue>& latestValues) const
+{
+    const MetricValue usageValue = latestValues.value(QStringLiteral("cpu.usage.total"));
+    if (!usageValue.value.isValid()) {
+        return {};
+    }
+
+    const QString model = latestValues.value(QStringLiteral("cpu.model")).value.toString();
+    const int coreCount = latestValues.value(QStringLiteral("cpu.logical.cores")).value.toInt();
+    const double totalUsage = usageValue.value.toDouble();
+
+    int busiestCoreIndex = -1;
+    double busiestCoreUsage = 0.0;
+    QList<TaskbarDetailRow> coreRows;
+    for (int index = 0; index < coreCount; ++index) {
+        const double coreUsage = latestValues.value(QStringLiteral("cpu.usage.core%1").arg(index)).value.toDouble();
+        if (index == 0 || coreUsage > busiestCoreUsage) {
+            busiestCoreUsage = coreUsage;
+            busiestCoreIndex = index;
+        }
+
+        if (index < 8) {
+            coreRows.append({
+                QStringLiteral("Core %1").arg(index + 1),
+                formatPercentCompact(coreUsage),
+                QString(),
+                coreUsage,
+                QStringLiteral("#ff453a")
+            });
+        }
+    }
+
+    TaskbarDetailContent content;
+    content.title = QStringLiteral("CPU Monitor");
+    content.subtitle = model;
+    content.primaryLabel = QStringLiteral("Total Load");
+    content.primaryValue = formatPercentCompact(totalUsage);
+    content.accentColor = QStringLiteral("#ff453a");
+    content.badges = {
+        {QStringLiteral("CORES"), coreCount > 0 ? QString::number(coreCount) : QStringLiteral("--")},
+        {QStringLiteral("PEAK CORE"), busiestCoreIndex >= 0
+                ? QStringLiteral("%1  %2").arg(busiestCoreIndex + 1).arg(formatPercentCompact(busiestCoreUsage))
+                : QStringLiteral("--")},
+        {QStringLiteral("INTERVAL"), QStringLiteral("%1s").arg(m_intervalMs / 1000.0, 0, 'f', 1)}
+    };
+    content.sections.append({QStringLiteral("Per-Core Load"), coreRows});
+    return content;
 }
 
 void CpuMonitorPlugin::collectAndPublish()

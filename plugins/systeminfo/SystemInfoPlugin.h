@@ -2,6 +2,7 @@
 
 #include "IMonitorPlugin.h"
 #include "IPanelPlugin.h"
+#include "ITaskbarDetailPlugin.h"
 #include "ITaskbarDisplayPlugin.h"
 #include "ISystemInfoCollector.h"
 
@@ -32,11 +33,11 @@ class SystemInfoPanelWidget;
  * 仅支持 macOS，平台支持范围通过插件元信息与采集器工厂分发明确声明。
  * \endif
  */
-class SystemInfoPlugin : public QObject, public IMonitorPlugin, public IPanelPlugin, public ITaskbarDisplayPlugin
+class SystemInfoPlugin : public QObject, public IMonitorPlugin, public IPanelPlugin, public ITaskbarDisplayPlugin, public ITaskbarDetailPlugin
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID Vitals_IPlugin_iid FILE "systeminfo_plugin.json")
-    Q_INTERFACES(Vitals::IPlugin Vitals::IMonitorPlugin Vitals::IPanelPlugin Vitals::ITaskbarDisplayPlugin)
+    Q_INTERFACES(Vitals::IPlugin Vitals::IMonitorPlugin Vitals::IPanelPlugin Vitals::ITaskbarDisplayPlugin Vitals::ITaskbarDetailPlugin)
 
 public:
     explicit SystemInfoPlugin(QObject* parent = nullptr);
@@ -60,6 +61,7 @@ public:
     QString taskbarDisplayText(const QHash<QString, MetricValue>& latestValues) const override;
     QString taskbarDisplayTooltip(const QHash<QString, MetricValue>& latestValues) const override;
     bool isTaskbarDisplayEnabledByDefault() const override;
+    TaskbarDetailContent taskbarDetailContent(const QHash<QString, MetricValue>& latestValues) const override;
 
 private:
     void collectAndPublish();
