@@ -47,7 +47,7 @@ Vitals
 │
 ├── app                 # Qt 主程序，负责窗口、导航、页面容器
 ├── core                # 核心框架，负责插件管理、数据中心、配置、日志
-├── sdk                 # 插件 SDK，定义插件接口和统一数据结构
+├── sdk                 # 插件 SDK，定义基础插件契约、capability 接口和统一数据结构
 ├── widgets             # 通用 UI 组件，如卡片、曲线图、仪表盘、表格
 ├── plugins             # 各类系统监控插件
 ├── platform            # 宿主程序自身需要的平台封装，可选
@@ -105,8 +105,10 @@ project-root/
 ├── sdk/
 │   ├── CMakeLists.txt
 │   ├── IPlugin.h
-│   ├── IMonitorPlugin.h
-│   ├── IPanelPlugin.h
+│   ├── IMonitorCapability.h
+│   ├── IPanelCapability.h
+│   ├── ITaskbarCapability.h
+│   ├── ISettingsCapability.h
 │   ├── IAppContext.h
 │   ├── IMetricSink.h
 │   ├── MetricData.h
@@ -279,20 +281,26 @@ plugins/cpu/
 │
 ├── CpuMonitorPlugin.h
 ├── CpuMonitorPlugin.cpp
-├── ICpuCollector.h
-├── CpuCollectorFactory.h
-├── CpuCollectorFactory.cpp
+├── monitor/
+│   ├── CpuMonitorCapability.h
+│   ├── CpuMonitorCapability.cpp
+│   ├── ICpuCollector.h
+│   ├── CpuCollectorFactory.h
+│   ├── CpuCollectorFactory.cpp
+│   └── platform/
+│       ├── windows/
+│       ├── macos/
+│       └── linux/
+├── panel/
+│   ├── CpuPanelCapability.h
+│   └── CpuPanelCapability.cpp
+├── taskbar/
+│   ├── CpuTaskbarCapability.h
+│   └── CpuTaskbarCapability.cpp
+└── settings/
+    ├── CpuSettingsCapability.h
+    └── CpuSettingsCapability.cpp
 │
-└── platform/
-    ├── windows/
-    │   ├── WindowsCpuCollector.h
-    │   └── WindowsCpuCollector.cpp
-    ├── macos/
-    │   ├── MacCpuCollector.h
-    │   └── MacCpuCollector.mm
-    └── linux/
-        ├── LinuxCpuCollector.h
-        └── LinuxCpuCollector.cpp
 ```
 
 统一接口：
@@ -392,48 +400,106 @@ public:
     virtual void start() = 0;
     virtual void stop() = 0;
     virtual void shutdown() = 0;
+
+    virtual IMonitorCapability* monitorCapability() { return nullptr; }
+    virtual IPanelCapability* panelCapability() { return nullptr; }
+    virtual ITaskbarCapability* taskbarCapability() { return nullptr; }
+    virtual ISettingsCapability* settingsCapability() { return nullptr; }
 };
 
 #define IPlugin_iid "com.vitals.plugin.IPlugin/1.0"
 Q_DECLARE_INTERFACE(IPlugin, IPlugin_iid)
 ```
 
-### 6.2 监控插件接口
+`IPlugin` 只负责生命周期和 capability 入口，不再鼓励一个具体插件类直接承担所有业务职责。
+
+### 6.2 Capability 接口
 
 ```cpp
-class IMonitorPlugin : public IPlugin
+class IMonitorCapability
 {
 public:
-    virtual ~IMonitorPlugin() = default;
+    virtual ~IMonitorCapability() = default;
 
     virtual QList<MetricDescriptor> metricDescriptors() const = 0;
-
     virtual int defaultIntervalMs() const = 0;
     virtual void setIntervalMs(int intervalMs) = 0;
+    virtual void startMonitoring() = 0;
+    virtual void stopMonitoring() = 0;
 };
-
-#define IMonitorPlugin_iid "com.vitals.plugin.IMonitorPlugin/1.0"
-Q_DECLARE_INTERFACE(IMonitorPlugin, IMonitorPlugin_iid)
 ```
 
-### 6.3 面板插件接口
-
 ```cpp
-class IPanelPlugin : public IPlugin
+class IPanelCapability
 {
 public:
-    virtual ~IPanelPlugin() = default;
+    virtual ~IPanelCapability() = default;
 
     virtual QString panelId() const = 0;
     virtual QString panelName() const = 0;
+    virtual QString panelIconKey() const = 0;
     virtual QWidget* createPanel(QWidget* parent = nullptr) = 0;
 };
-
-#define IPanelPlugin_iid "com.vitals.plugin.IPanelPlugin/1.0"
-Q_DECLARE_INTERFACE(IPanelPlugin, IPanelPlugin_iid)
 ```
 
-一个插件可以同时实现 `IMonitorPlugin` 和 `IPanelPlugin`。
+```cpp
+class ITaskbarCapability
+{
+public:
+    virtual ~ITaskbarCapability() = default;
+
+    virtual QString displayText(const QHash<QString, MetricValue>& latestValues) const = 0;
+    virtual QString tooltip(const QHash<QString, MetricValue>& latestValues) const = 0;
+    virtual bool isEnabledByDefault() const { return true; }
+    virtual TaskbarDetailContent detailContent(
+        const QHash<QString, MetricValue>& latestValues) const = 0;
+};
+```
+
+```cpp
+class ISettingsCapability
+{
+public:
+    virtual ~ISettingsCapability() = default;
+
+    virtual QString settingsId() const = 0;
+    virtual QString settingsTitle() const = 0;
+    virtual QWidget* createSettingsWidget(QWidget* parent = nullptr) = 0;
+};
+```
+
+### 6.3 推荐插件实现模式
+
+推荐模式不是“一个插件类多重继承很多接口”，而是：
+
+```text
+Plugin shell
+├── MonitorCapability
+├── PanelCapability
+├── TaskbarCapability
+└── SettingsCapability
+```
+
+例如：
+
+```text
+CpuMonitorPlugin
+├── CpuMonitorCapability
+├── CpuPanelCapability
+├── CpuTaskbarCapability
+└── CpuSettingsCapability
+```
+
+平台差异继续只下沉在 capability 内部使用的 collector / platform 实现中。
+
+### 6.4 兼容策略
+
+为平滑迁移，宿主可以在一段时间内同时兼容：
+
+- 新式 capability 插件
+- 旧式 `IMonitorPlugin` / `IPanelPlugin` / `ITaskbarDisplayPlugin` / `ITaskbarDetailPlugin` 插件
+
+但新增插件应优先采用 capability 模式。
 
 ---
 
@@ -817,12 +883,12 @@ Tile 网格区
 该能力属于宿主 UI 外壳，不属于某个监控插件。  
 任务栏组件只能展示来自 `MetricCenter` 的指标，不允许直接调用系统 API 采集 CPU、内存、网络等数据。
 
-如果某个插件希望参与任务栏 / 托盘 / 菜单栏显示，应通过专门的插件扩展接口声明，而不是让宿主硬编码这个插件该显示什么。
+如果某个插件希望参与任务栏 / 托盘 / 菜单栏显示，应通过专门的 capability 声明，而不是让宿主硬编码这个插件该显示什么。
 
 插件任务栏显示能力需要满足以下要求：
 
 - 插件自己定义紧凑显示文本，例如 `CPU 18%`、`16G | 12d` 之类的摘要。
-- 插件可以提供自己的 tooltip 摘要文本。
+- 插件可以提供自己的 tooltip 摘要文本和详情内容。
 - 插件需要声明自己是否支持任务栏显示，例如在元信息中增加：
 
 ```json
@@ -1118,7 +1184,7 @@ CPU 插件示例：
 2. `core`
 3. `PluginManager`
 4. `IPlugin`
-5. `IPanelPlugin`
+5. `IPanelCapability`
 6. 一个最小面板插件或 CPU 监控插件
 7. 主程序加载插件并显示插件页面
 

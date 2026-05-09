@@ -1,6 +1,14 @@
 add_library(SystemInfoPlugin MODULE
     SystemInfoPlugin.h
     SystemInfoPlugin.cpp
+    monitor/SystemInfoMonitorCapability.h
+    monitor/SystemInfoMonitorCapability.cpp
+    panel/SystemInfoPanelCapability.h
+    panel/SystemInfoPanelCapability.cpp
+    taskbar/SystemInfoTaskbarCapability.h
+    taskbar/SystemInfoTaskbarCapability.cpp
+    settings/SystemInfoSettingsCapability.h
+    settings/SystemInfoSettingsCapability.cpp
     SystemInfoPanelWidget.h
     SystemInfoPanelWidget.cpp
     ISystemInfoCollector.h

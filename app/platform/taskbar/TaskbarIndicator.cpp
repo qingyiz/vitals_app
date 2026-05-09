@@ -223,11 +223,11 @@ QString TaskbarIndicator::iconLabel(const QHash<QString, MetricValue>& latestVal
 {
     QStringList segments;
     for (const TaskbarPluginDisplay& display : m_pluginDisplays) {
-        if (!display.provider) {
+        if (!display.capability && !display.provider) {
             continue;
         }
 
-        const QString text = display.provider->taskbarDisplayText(latestValues).trimmed();
+        const QString text = labelForDisplay(display, latestValues);
         if (!text.isEmpty()) {
             segments.append(text);
         }
@@ -267,16 +267,16 @@ QString TaskbarIndicator::tooltipText(const QHash<QString, MetricValue>& latestV
     QStringList lines;
     lines.append(QStringLiteral("Vitals %1").arg(platformName()));
     for (const TaskbarPluginDisplay& display : m_pluginDisplays) {
-        if (!display.provider) {
+        if (!display.capability && !display.provider) {
             continue;
         }
 
-        const QString label = display.provider->taskbarDisplayText(latestValues).trimmed();
+        const QString label = labelForDisplay(display, latestValues);
         if (label.isEmpty()) {
             continue;
         }
 
-        QString tooltip = display.provider->taskbarDisplayTooltip(latestValues).trimmed();
+        QString tooltip = tooltipForDisplay(display, latestValues);
         if (tooltip.isEmpty()) {
             tooltip = label;
         }
@@ -371,6 +371,10 @@ QString TaskbarIndicator::labelForDisplay(
     const TaskbarPluginDisplay& display,
     const QHash<QString, MetricValue>& latestValues) const
 {
+    if (display.capability) {
+        return display.capability->displayText(latestValues).trimmed();
+    }
+
     if (!display.provider) {
         return {};
     }
@@ -383,6 +387,14 @@ QString TaskbarIndicator::tooltipForDisplay(
     const QHash<QString, MetricValue>& latestValues) const
 {
     const QString label = labelForDisplay(display, latestValues);
+    if (display.capability) {
+        QString tooltip = display.capability->tooltip(latestValues).trimmed();
+        if (tooltip.isEmpty()) {
+            tooltip = label;
+        }
+        return tooltip;
+    }
+
     if (!display.provider) {
         return label;
     }
@@ -399,7 +411,9 @@ TaskbarDetailContent TaskbarIndicator::detailContentForDisplay(
     const QHash<QString, MetricValue>& latestValues) const
 {
     TaskbarDetailContent content;
-    if (display.detailProvider) {
+    if (display.capability) {
+        content = display.capability->detailContent(latestValues);
+    } else if (display.detailProvider) {
         content = display.detailProvider->taskbarDetailContent(latestValues);
     }
 

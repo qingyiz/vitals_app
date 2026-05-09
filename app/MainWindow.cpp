@@ -2,7 +2,9 @@
 
 #include "AppContext.h"
 #include "DashboardWidget.h"
+#include "IPanelCapability.h"
 #include "IPanelPlugin.h"
+#include "ITaskbarCapability.h"
 #include "ITaskbarDetailPlugin.h"
 #include "ITaskbarDisplayPlugin.h"
 #include "NavigationWidget.h"
@@ -177,8 +179,9 @@ void MainWindow::syncTaskbarDisplays()
     const QList<PluginRuntimeInfo> pluginInfos = m_pluginManager->pluginInfos();
 
     for (IPlugin* plugin : m_pluginManager->plugins()) {
-        auto* provider = dynamic_cast<ITaskbarDisplayPlugin*>(plugin);
-        if (!provider) {
+        ITaskbarCapability* capability = plugin ? plugin->taskbarCapability() : nullptr;
+        auto* provider = capability ? nullptr : dynamic_cast<ITaskbarDisplayPlugin*>(plugin);
+        if (!capability && !provider) {
             continue;
         }
 
@@ -193,7 +196,9 @@ void MainWindow::syncTaskbarDisplays()
         }
 
         if (!m_configManager->isPluginTaskbarEnabled(
-                meta.id, filePath, provider->isTaskbarDisplayEnabledByDefault())) {
+                meta.id,
+                filePath,
+                capability ? capability->isEnabledByDefault() : provider->isTaskbarDisplayEnabledByDefault())) {
             continue;
         }
 
@@ -201,8 +206,9 @@ void MainWindow::syncTaskbarDisplays()
             meta.id,
             meta.name.isEmpty() ? meta.id : meta.name,
             filePath,
+            capability,
             provider,
-            dynamic_cast<ITaskbarDetailPlugin*>(plugin)
+            capability ? nullptr : dynamic_cast<ITaskbarDetailPlugin*>(plugin)
         });
     }
 
@@ -277,14 +283,18 @@ void MainWindow::rebuildPages(const QString& preferredPageId)
     }
 
     for (IPlugin* plugin : m_pluginManager->plugins()) {
-        auto* panelPlugin = dynamic_cast<IPanelPlugin*>(plugin);
-        if (!panelPlugin) {
+        IPanelCapability* panelCapability = plugin ? plugin->panelCapability() : nullptr;
+        auto* panelPlugin = panelCapability ? nullptr : dynamic_cast<IPanelPlugin*>(plugin);
+        if (!panelCapability && !panelPlugin) {
             continue;
         }
-        addPage(panelPlugin->panelId(), panelPlugin->panelName(), panelPlugin->createPanel(this),
-            panelPlugin->panelIcon().isNull()
-                ? createNavigationIcon(panelPlugin->panelIconKey())
-                : panelPlugin->panelIcon());
+        const QString panelId = panelCapability ? panelCapability->panelId() : panelPlugin->panelId();
+        const QString panelName = panelCapability ? panelCapability->panelName() : panelPlugin->panelName();
+        const QIcon icon = panelCapability ? panelCapability->panelIcon() : panelPlugin->panelIcon();
+        const QString iconKey = panelCapability ? panelCapability->panelIconKey() : panelPlugin->panelIconKey();
+        QWidget* page = panelCapability ? panelCapability->createPanel(this) : panelPlugin->createPanel(this);
+        addPage(panelId, panelName, page,
+            icon.isNull() ? createNavigationIcon(iconKey) : icon);
     }
 
     if (!preferredPageId.isEmpty() && m_navigation->setCurrentItemById(preferredPageId)) {

@@ -1,21 +1,17 @@
 #pragma once
 
-#include "IMonitorPlugin.h"
-#include "IPanelPlugin.h"
-#include "ITaskbarDetailPlugin.h"
-#include "ITaskbarDisplayPlugin.h"
-#include "ISystemInfoCollector.h"
+#include "IPlugin.h"
 
 #include <QObject>
-#include <QPointer>
 #include <memory>
-
-class QTimer;
 
 namespace Vitals {
 
 class IAppContext;
-class SystemInfoPanelWidget;
+class SystemInfoMonitorCapability;
+class SystemInfoPanelCapability;
+class SystemInfoTaskbarCapability;
+class SystemInfoSettingsCapability;
 
 /**
  * \if ENGLISH
@@ -33,11 +29,11 @@ class SystemInfoPanelWidget;
  * 仅支持 macOS，平台支持范围通过插件元信息与采集器工厂分发明确声明。
  * \endif
  */
-class SystemInfoPlugin : public QObject, public IMonitorPlugin, public IPanelPlugin, public ITaskbarDisplayPlugin, public ITaskbarDetailPlugin
+class SystemInfoPlugin : public QObject, public IPlugin
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID Vitals_IPlugin_iid FILE "systeminfo_plugin.json")
-    Q_INTERFACES(Vitals::IPlugin Vitals::IMonitorPlugin Vitals::IPanelPlugin Vitals::ITaskbarDisplayPlugin Vitals::ITaskbarDetailPlugin)
+    Q_INTERFACES(Vitals::IPlugin)
 
 public:
     explicit SystemInfoPlugin(QObject* parent = nullptr);
@@ -49,30 +45,16 @@ public:
     void stop() override;
     void shutdown() override;
 
-    QList<MetricDescriptor> metricDescriptors() const override;
-    int defaultIntervalMs() const override;
-    void setIntervalMs(int intervalMs) override;
-
-    QString panelId() const override;
-    QString panelName() const override;
-    QString panelIconKey() const override;
-    QWidget* createPanel(QWidget* parent = nullptr) override;
-
-    QString taskbarDisplayText(const QHash<QString, MetricValue>& latestValues) const override;
-    QString taskbarDisplayTooltip(const QHash<QString, MetricValue>& latestValues) const override;
-    bool isTaskbarDisplayEnabledByDefault() const override;
-    TaskbarDetailContent taskbarDetailContent(const QHash<QString, MetricValue>& latestValues) const override;
-
-private:
-    void collectAndPublish();
-    void publishSnapshot(const SystemInfoSnapshot& snapshot) const;
+    IMonitorCapability* monitorCapability() override;
+    IPanelCapability* panelCapability() override;
+    ITaskbarCapability* taskbarCapability() override;
+    ISettingsCapability* settingsCapability() override;
 
     IAppContext* m_context = nullptr;
-    std::unique_ptr<ISystemInfoCollector> m_collector;
-    QTimer* m_timer = nullptr;
-    int m_intervalMs = 5000;
-    SystemInfoSnapshot m_lastSnapshot;
-    QPointer<SystemInfoPanelWidget> m_panel;
+    std::unique_ptr<SystemInfoMonitorCapability> m_monitorCapability;
+    std::unique_ptr<SystemInfoPanelCapability> m_panelCapability;
+    std::unique_ptr<SystemInfoTaskbarCapability> m_taskbarCapability;
+    std::unique_ptr<SystemInfoSettingsCapability> m_settingsCapability;
 };
 
 } // namespace Vitals

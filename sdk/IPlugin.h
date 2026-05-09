@@ -7,6 +7,11 @@
 
 namespace Vitals {
 
+class IMonitorCapability;
+class IPanelCapability;
+class ITaskbarCapability;
+class ISettingsCapability;
+
 /**
  * \if ENGLISH
  * @brief Base lifecycle contract for all Vitals plugins
@@ -87,6 +92,62 @@ public:
      * \endif
      */
     virtual void shutdown() = 0;
+
+    /**
+     * \if ENGLISH
+     * @brief Returns the optional monitoring capability exposed by this plugin
+     * \endif
+     *
+     * \if CHINESE
+     * @brief 返回该插件暴露的可选监控能力对象
+     * \endif
+     */
+    virtual IMonitorCapability* monitorCapability()
+    {
+        return nullptr;
+    }
+
+    /**
+     * \if ENGLISH
+     * @brief Returns the optional panel capability exposed by this plugin
+     * \endif
+     *
+     * \if CHINESE
+     * @brief 返回该插件暴露的可选面板能力对象
+     * \endif
+     */
+    virtual IPanelCapability* panelCapability()
+    {
+        return nullptr;
+    }
+
+    /**
+     * \if ENGLISH
+     * @brief Returns the optional taskbar capability exposed by this plugin
+     * \endif
+     *
+     * \if CHINESE
+     * @brief 返回该插件暴露的可选任务栏能力对象
+     * \endif
+     */
+    virtual ITaskbarCapability* taskbarCapability()
+    {
+        return nullptr;
+    }
+
+    /**
+     * \if ENGLISH
+     * @brief Returns the optional settings capability exposed by this plugin
+     * \endif
+     *
+     * \if CHINESE
+     * @brief 返回该插件暴露的可选设置能力对象
+     * \endif
+     */
+    virtual ISettingsCapability* settingsCapability()
+    {
+        return nullptr;
+    }
 };
 
 } // namespace Vitals

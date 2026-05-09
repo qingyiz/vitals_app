@@ -1,6 +1,14 @@
 add_library(CpuMonitorPlugin MODULE
     CpuMonitorPlugin.h
     CpuMonitorPlugin.cpp
+    monitor/CpuMonitorCapability.h
+    monitor/CpuMonitorCapability.cpp
+    panel/CpuPanelCapability.h
+    panel/CpuPanelCapability.cpp
+    taskbar/CpuTaskbarCapability.h
+    taskbar/CpuTaskbarCapability.cpp
+    settings/CpuSettingsCapability.h
+    settings/CpuSettingsCapability.cpp
     CpuPanelWidget.h
     CpuPanelWidget.cpp
     ICpuCollector.h

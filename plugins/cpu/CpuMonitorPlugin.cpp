@@ -1,31 +1,15 @@
 #include "CpuMonitorPlugin.h"
 
-#include "CpuCollectorFactory.h"
-#include "CpuPanelWidget.h"
-#include "IAppContext.h"
-#include "IMetricSink.h"
-
-#include <QDateTime>
-#include <QTimer>
+#include "monitor/CpuMonitorCapability.h"
+#include "panel/CpuPanelCapability.h"
+#include "settings/CpuSettingsCapability.h"
+#include "taskbar/CpuTaskbarCapability.h"
 
 namespace Vitals {
 
-namespace {
-
-QString formatPercentCompact(double value)
-{
-    const double clamped = qBound(0.0, value, 100.0);
-    return QStringLiteral("%1%").arg(clamped, 0, 'f', clamped >= 10.0 ? 0 : 1);
-}
-
-} // namespace
-
 CpuMonitorPlugin::CpuMonitorPlugin(QObject* parent)
     : QObject(parent)
-    , m_timer(new QTimer(this))
 {
-    m_timer->setInterval(m_intervalMs);
-    connect(m_timer, &QTimer::timeout, this, &CpuMonitorPlugin::collectAndPublish);
 }
 
 CpuMonitorPlugin::~CpuMonitorPlugin() = default;
@@ -48,223 +32,76 @@ PluginMetaInfo CpuMonitorPlugin::metaInfo() const
 bool CpuMonitorPlugin::initialize(IAppContext* context)
 {
     m_context = context;
-    m_collector = CpuCollectorFactory::create();
-    if (!m_context || !m_collector) {
+
+    m_monitorCapability = std::make_unique<CpuMonitorCapability>();
+    m_panelCapability = std::make_unique<CpuPanelCapability>();
+    m_taskbarCapability = std::make_unique<CpuTaskbarCapability>(m_monitorCapability.get());
+    m_settingsCapability = std::make_unique<CpuSettingsCapability>();
+
+    if (!m_monitorCapability->initialize(context)) {
+        shutdown();
         return false;
     }
 
-    return m_collector->initialize();
+    connect(m_monitorCapability.get(), &CpuMonitorCapability::snapshotUpdated, this,
+        [this](const CpuSnapshot& snapshot) {
+            if (m_panelCapability) {
+                m_panelCapability->updateSnapshot(snapshot);
+            }
+        });
+
+    if (m_panelCapability) {
+        m_panelCapability->updateSnapshot(m_monitorCapability->lastSnapshot());
+    }
+
+    return true;
 }
 
 void CpuMonitorPlugin::start()
 {
-    collectAndPublish();
-    m_timer->start();
+    if (m_monitorCapability) {
+        m_monitorCapability->startMonitoring();
+    }
 }
 
 void CpuMonitorPlugin::stop()
 {
-    m_timer->stop();
+    if (m_monitorCapability) {
+        m_monitorCapability->stopMonitoring();
+    }
 }
 
 void CpuMonitorPlugin::shutdown()
 {
-    m_timer->stop();
-    m_collector.reset();
-    m_panel = nullptr;
+    if (m_monitorCapability) {
+        m_monitorCapability->stopMonitoring();
+    }
+
+    m_settingsCapability.reset();
+    m_taskbarCapability.reset();
+    m_panelCapability.reset();
+    m_monitorCapability.reset();
     m_context = nullptr;
 }
 
-QList<MetricDescriptor> CpuMonitorPlugin::metricDescriptors() const
+IMonitorCapability* CpuMonitorPlugin::monitorCapability()
 {
-    QList<MetricDescriptor> descriptors = {
-        {QStringLiteral("cpu.model"), QStringLiteral("CPU Model"),
-            QStringLiteral("Human-readable processor model string."), QString(), MetricValueType::String},
-        {QStringLiteral("cpu.logical.cores"), QStringLiteral("Logical Cores"),
-            QStringLiteral("Logical processor count reported by the current platform."), QString(), MetricValueType::Integer},
-        {QStringLiteral("cpu.usage.total"), QStringLiteral("Total CPU Usage"),
-            QStringLiteral("Average CPU utilization across logical cores."), QStringLiteral("%"), MetricValueType::Percentage}
-    };
-
-    const int logicalCoreCount = m_collector ? m_collector->logicalCoreCount() : m_lastSnapshot.logicalCoreCount;
-    for (int index = 0; index < logicalCoreCount; ++index) {
-        descriptors.append({
-            QStringLiteral("cpu.usage.core%1").arg(index),
-            QStringLiteral("CPU Core %1 Usage").arg(index + 1),
-            QStringLiteral("Utilization for logical CPU core %1.").arg(index + 1),
-            QStringLiteral("%"),
-            MetricValueType::Percentage
-        });
-    }
-
-    return descriptors;
+    return m_monitorCapability.get();
 }
 
-int CpuMonitorPlugin::defaultIntervalMs() const
+IPanelCapability* CpuMonitorPlugin::panelCapability()
 {
-    return 2000;
+    return m_panelCapability.get();
 }
 
-void CpuMonitorPlugin::setIntervalMs(int intervalMs)
+ITaskbarCapability* CpuMonitorPlugin::taskbarCapability()
 {
-    m_intervalMs = qMax(500, intervalMs);
-    m_timer->setInterval(m_intervalMs);
+    return m_taskbarCapability.get();
 }
 
-QString CpuMonitorPlugin::panelId() const
+ISettingsCapability* CpuMonitorPlugin::settingsCapability()
 {
-    return QStringLiteral("cpu");
-}
-
-QString CpuMonitorPlugin::panelName() const
-{
-    return QStringLiteral("CPU Monitor");
-}
-
-QString CpuMonitorPlugin::panelIconKey() const
-{
-    return QStringLiteral("cpu");
-}
-
-QWidget* CpuMonitorPlugin::createPanel(QWidget* parent)
-{
-    auto* panel = new CpuPanelWidget(parent);
-    panel->applySnapshot(m_lastSnapshot);
-    m_panel = panel;
-    return panel;
-}
-
-QString CpuMonitorPlugin::taskbarDisplayText(const QHash<QString, MetricValue>& latestValues) const
-{
-    const MetricValue usageValue = latestValues.value(QStringLiteral("cpu.usage.total"));
-    if (!usageValue.value.isValid()) {
-        return QString();
-    }
-
-    return QStringLiteral("CPU:\n%1").arg(formatPercentCompact(usageValue.value.toDouble()));
-}
-
-QString CpuMonitorPlugin::taskbarDisplayTooltip(const QHash<QString, MetricValue>& latestValues) const
-{
-    const QString model = latestValues.value(QStringLiteral("cpu.model")).value.toString();
-    const int coreCount = latestValues.value(QStringLiteral("cpu.logical.cores")).value.toInt();
-    const double totalUsage = latestValues.value(QStringLiteral("cpu.usage.total")).value.toDouble();
-
-    int busiestCoreIndex = -1;
-    double busiestCoreUsage = 0.0;
-    for (int index = 0; index < coreCount; ++index) {
-        const double coreUsage = latestValues.value(QStringLiteral("cpu.usage.core%1").arg(index)).value.toDouble();
-        if (index == 0 || coreUsage > busiestCoreUsage) {
-            busiestCoreUsage = coreUsage;
-            busiestCoreIndex = index;
-        }
-    }
-
-    QStringList parts;
-    if (!model.isEmpty()) parts.append(model);
-    if (coreCount > 0) parts.append(QStringLiteral("%1 logical cores").arg(coreCount));
-    parts.append(QStringLiteral("Total %1").arg(formatPercentCompact(totalUsage)));
-    if (busiestCoreIndex >= 0) {
-        parts.append(QStringLiteral("Peak Core %1 %2")
-                         .arg(busiestCoreIndex + 1)
-                         .arg(formatPercentCompact(busiestCoreUsage)));
-    }
-    return parts.join(QStringLiteral(" | "));
-}
-
-bool CpuMonitorPlugin::isTaskbarDisplayEnabledByDefault() const
-{
-    return true;
-}
-
-TaskbarDetailContent CpuMonitorPlugin::taskbarDetailContent(const QHash<QString, MetricValue>& latestValues) const
-{
-    const MetricValue usageValue = latestValues.value(QStringLiteral("cpu.usage.total"));
-    if (!usageValue.value.isValid()) {
-        return {};
-    }
-
-    const QString model = latestValues.value(QStringLiteral("cpu.model")).value.toString();
-    const int coreCount = latestValues.value(QStringLiteral("cpu.logical.cores")).value.toInt();
-    const double totalUsage = usageValue.value.toDouble();
-
-    int busiestCoreIndex = -1;
-    double busiestCoreUsage = 0.0;
-    QList<TaskbarDetailRow> coreRows;
-    for (int index = 0; index < coreCount; ++index) {
-        const double coreUsage = latestValues.value(QStringLiteral("cpu.usage.core%1").arg(index)).value.toDouble();
-        if (index == 0 || coreUsage > busiestCoreUsage) {
-            busiestCoreUsage = coreUsage;
-            busiestCoreIndex = index;
-        }
-
-        if (index < 8) {
-            coreRows.append({
-                QStringLiteral("Core %1").arg(index + 1),
-                formatPercentCompact(coreUsage),
-                QString(),
-                coreUsage,
-                QStringLiteral("#ff453a")
-            });
-        }
-    }
-
-    TaskbarDetailContent content;
-    content.title = QStringLiteral("CPU Monitor");
-    content.subtitle = model;
-    content.primaryLabel = QStringLiteral("Total Load");
-    content.primaryValue = formatPercentCompact(totalUsage);
-    content.accentColor = QStringLiteral("#ff453a");
-    content.badges = {
-        {QStringLiteral("CORES"), coreCount > 0 ? QString::number(coreCount) : QStringLiteral("--")},
-        {QStringLiteral("PEAK CORE"), busiestCoreIndex >= 0
-                ? QStringLiteral("%1  %2").arg(busiestCoreIndex + 1).arg(formatPercentCompact(busiestCoreUsage))
-                : QStringLiteral("--")},
-        {QStringLiteral("INTERVAL"), QStringLiteral("%1s").arg(m_intervalMs / 1000.0, 0, 'f', 1)}
-    };
-    content.sections.append({QStringLiteral("Per-Core Load"), coreRows});
-    return content;
-}
-
-void CpuMonitorPlugin::collectAndPublish()
-{
-    if (!m_collector) {
-        return;
-    }
-
-    m_lastSnapshot = m_collector->collect();
-    publishSnapshot(m_lastSnapshot);
-
-    if (m_panel) {
-        m_panel->applySnapshot(m_lastSnapshot);
-    }
-}
-
-void CpuMonitorPlugin::publishSnapshot(const CpuSnapshot& snapshot) const
-{
-    if (!m_context || !m_context->metricSink()) {
-        return;
-    }
-
-    MetricFrame frame;
-    frame.pluginId = metaInfo().id;
-    frame.timestamp = QDateTime::currentDateTime();
-    frame.values = {
-        {QStringLiteral("cpu.model"), snapshot.cpuName, frame.timestamp, {}},
-        {QStringLiteral("cpu.logical.cores"), snapshot.logicalCoreCount, frame.timestamp, {}},
-        {QStringLiteral("cpu.usage.total"), snapshot.totalUsagePercent, frame.timestamp, {}}
-    };
-
-    for (int index = 0; index < snapshot.perCoreUsagePercent.size(); ++index) {
-        frame.values.append({
-            QStringLiteral("cpu.usage.core%1").arg(index),
-            snapshot.perCoreUsagePercent.at(index),
-            frame.timestamp,
-            {}
-        });
-    }
-
-    m_context->metricSink()->publishFrame(frame);
+    return m_settingsCapability.get();
 }
 
 } // namespace Vitals

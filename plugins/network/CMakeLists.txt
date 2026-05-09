@@ -1,6 +1,14 @@
 add_library(NetworkMonitorPlugin MODULE
     NetworkMonitorPlugin.h
     NetworkMonitorPlugin.cpp
+    monitor/NetworkMonitorCapability.h
+    monitor/NetworkMonitorCapability.cpp
+    panel/NetworkPanelCapability.h
+    panel/NetworkPanelCapability.cpp
+    taskbar/NetworkTaskbarCapability.h
+    taskbar/NetworkTaskbarCapability.cpp
+    settings/NetworkSettingsCapability.h
+    settings/NetworkSettingsCapability.cpp
     NetworkPanelWidget.h
     NetworkPanelWidget.cpp
     INetworkCollector.h

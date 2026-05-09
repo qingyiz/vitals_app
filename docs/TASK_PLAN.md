@@ -52,8 +52,10 @@ docs/
 已完成第一版插件 SDK：
 
 - `IPlugin`
-- `IPanelPlugin`
-- `IMonitorPlugin`
+- `IMonitorCapability`
+- `IPanelCapability`
+- `ITaskbarCapability`
+- `ISettingsCapability`
 - `IAppContext`
 - `IMetricSink`
 - `MetricData`
@@ -61,9 +63,11 @@ docs/
 
 这些接口作为宿主和插件之间的稳定边界，后续新增能力优先扩展接口，而不是让插件直接依赖主窗口。
 
-同时已修正一个关键结构问题：
+当前插件架构已升级为：
 
-- `IMonitorPlugin` 与 `IPanelPlugin` 对 `IPlugin` 使用虚继承，支持一个插件同时具备“监控 + 面板”双能力。
+- `IPlugin` 只负责生命周期和 capability 入口。
+- 具体能力通过 `monitorCapability()`、`panelCapability()`、`taskbarCapability()`、`settingsCapability()` 暴露。
+- 宿主优先消费 capability，新旧插件接口仍可兼容共存。
 
 ### 3. 核心框架
 
@@ -110,13 +114,16 @@ docs/
 
 ### 6. 监控插件
 
-已完成 `CpuMonitorPlugin` 与 `SystemInfoPlugin`：
+已完成 `CpuMonitorPlugin`、`NetworkMonitorPlugin` 与 `SystemInfoPlugin`：
 
 - 作为动态插件构建。
-- 实现监控插件、面板插件和任务栏显示能力。
+- 使用“插件壳 + capability 对象”结构。
 - CPU 插件发布总使用率、每核使用率、逻辑核心数等指标。
+- Network 插件发布主网卡、实时上下行速率、累计流量等指标。
 - SystemInfo 插件发布设备、系统、硬件和运行时长等指标。
-- 插件元信息分别位于 `plugins/cpu/cpu_plugin.json` 和 `plugins/systeminfo/systeminfo_plugin.json`。
+- 每个插件内部都已拆出 `monitor/`、`panel/`、`taskbar/`、`settings/` 目录。
+- 监控类 capability 继续通过 `Collector + Factory + platform/*` 组织跨平台采集实现。
+- 插件元信息分别位于 `plugins/cpu/cpu_plugin.json`、`plugins/network/network_plugin.json`、`plugins/systeminfo/systeminfo_plugin.json`。
 - 当前已实现平台通过 `supportedPlatforms` 明确声明。
 
 插件输出目录已统一为：
@@ -131,7 +138,7 @@ build/bin/plugins/
 
 - 插件目录位于 `plugins/systeminfo/`。
 - 当前仅支持 macOS，并通过 `supportedPlatforms: ["macos"]` 明确声明。
-- 插件同时提供监控数据能力和详情页能力。
+- 插件通过 capability 组合提供监控数据、详情页、任务栏和设置入口能力。
 - 采集层使用 `ISystemInfoCollector` + `SystemInfoCollectorFactory` + `platform/macos/` 分层组织。
 - 当前已上报设备名、macOS 版本、CPU 型号、GPU 型号、总内存、系统运行时长。
 - 插件详情页改为复用 `InfoPanelWidget`，展示同一份统一快照数据。
@@ -155,6 +162,7 @@ build/bin/plugins/
 - 任务栏 / 托盘 / 菜单栏显示抽象已经建立。
 - Dashboard 可以显示插件发布的实时指标。
 - Dashboard 已支持对字节类指标进行可读单位格式化。
+- 宿主已支持优先消费 capability，并兼容旧式多接口插件。
 
 ### UI 组件
 
@@ -164,19 +172,20 @@ build/bin/plugins/
 
 ### 插件
 
-- `CpuMonitorPlugin` 已验证监控插件加载链路。
-- `SystemInfoPlugin` 已完成 macOS 首版。
-- `SystemInfoPlugin` 同时验证了“监控插件 + 面板插件”双能力模式。
+- `CpuMonitorPlugin`、`NetworkMonitorPlugin`、`SystemInfoPlugin` 已完成 capability 化重构。
+- 三个插件都已经验证“插件壳 + monitor/panel/taskbar/settings capability”模式。
+- capability 化后，平台差异继续只下沉在 collector / platform 目录，不回流到插件主类。
 
 ## 下一阶段计划
 
 ### 第一阶段补强：框架跑通与工程稳定
 
-- 启动 GUI，确认主程序可以实际加载 `CpuMonitorPlugin` 和 `SystemInfoPlugin` 并正确显示页面。
+- 启动 GUI，确认主程序可以实际加载 CPU / Network / SystemInfo 插件并正确显示页面。
 - 在 Windows、macOS、Linux 分别验证任务栏 / 托盘 / 菜单栏显示行为。
 - 增加基础自动化测试或最小 smoke test，避免后续改动破坏插件加载链路。
 - 为插件加载失败增加更完整的错误展示页面。
 - 为插件管理页展示已加载插件、失败插件和状态。
+- 为 `settingsCapability` 增加宿主侧统一设置入口。
 - 继续完善宿主统一样式，使 Dashboard、插件页、任务栏提示风格更一致。
 
 ### 第二阶段：数据链路跑通
@@ -196,19 +205,17 @@ build/bin/plugins/
 - 根据需要增加更多稳定指标，例如架构、内核版本、序列化标识等。
 - 继续抽离 `InfoTileWidget`、`InfoRowWidget` 等更细粒度组件，降低后续插件页面开发成本。
 
-### 第四阶段：CPU 插件
+### 第四阶段：CPU / Network 插件深化
 
-- 新增 `plugins/cpu/`。
-- 建立 `ICpuCollector` 和平台工厂。
-- 实现 CPU 总使用率、每核心使用率、CPU 型号。
-- 将采集与 UI 展示解耦，数据统一进入 `MetricCenter`。
-- 优先复用宿主提供的页面骨架与卡片组件，不再为 CPU 页面重写整套布局。
+- 完善 CPU Windows / Linux collector。
+- 完善 Network Windows / Linux collector。
+- 把 capability 间重复逻辑进一步抽成可复用基类或 helper。
+- 为设置 capability 接入真实设置项，而不是占位 widget。
 
 ### 第五阶段：核心监控插件扩展
 
 - MemoryMonitorPlugin
 - DiskMonitorPlugin
-- NetworkMonitorPlugin
 - BatteryMonitorPlugin
 
 ### 第六阶段：复杂插件后置
@@ -218,12 +225,13 @@ build/bin/plugins/
 
 ## 当前边界说明
 
-当前版本已经不再只是纯骨架，已经包含一个可编译接入的 macOS SystemInfo 首版插件和一套可复用的宿主页面骨架组件。
+当前版本已经不再只是纯骨架，已经包含三类可编译接入插件、一套 capability 化插件架构，以及可复用的宿主页面骨架组件。
 
 但项目整体仍处于早期阶段，当前边界仍然包括：
 
-- 真实监控能力还未补齐，CPU / Memory / Network / Disk / Battery 等核心插件尚未实现。
+- 真实跨平台能力还未补齐，CPU / Network / SystemInfo 的 Windows / Linux collector 尚未实现。
 - 插件管理页仍是占位版本。
 - 自动化测试仍未建立。
 - 多平台运行验证还未完成。
+- 设置 capability 还未接入统一宿主设置中心。
 - 通用 UI 组件体系刚开始搭建，仍有继续抽象空间。

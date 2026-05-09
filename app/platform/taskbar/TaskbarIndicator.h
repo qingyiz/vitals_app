@@ -2,6 +2,7 @@
 
 #include "MetricData.h"
 
+#include "ITaskbarCapability.h"
 #include "ITaskbarDetailPlugin.h"
 #include "ITaskbarDisplayPlugin.h"
 
@@ -37,6 +38,7 @@ struct TaskbarPluginDisplay
     QString pluginId;
     QString pluginName;
     QString filePath;
+    ITaskbarCapability* capability = nullptr;
     ITaskbarDisplayPlugin* provider = nullptr;
     ITaskbarDetailPlugin* detailProvider = nullptr;
 };

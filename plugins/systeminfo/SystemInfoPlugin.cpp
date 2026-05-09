@@ -1,54 +1,15 @@
 #include "SystemInfoPlugin.h"
 
-#include "IAppContext.h"
-#include "IMetricSink.h"
-#include "SystemInfoCollectorFactory.h"
-#include "SystemInfoPanelWidget.h"
-
-#include <QDateTime>
-#include <QTimer>
+#include "monitor/SystemInfoMonitorCapability.h"
+#include "panel/SystemInfoPanelCapability.h"
+#include "settings/SystemInfoSettingsCapability.h"
+#include "taskbar/SystemInfoTaskbarCapability.h"
 
 namespace Vitals {
 
-namespace {
-
-QString formatMemoryCompact(qint64 bytes)
-{
-    const double gib = static_cast<double>(bytes) / 1024.0 / 1024.0 / 1024.0;
-    return QStringLiteral("%1G").arg(gib, 0, 'f', gib >= 10.0 ? 0 : 1);
-}
-
-QString formatUptimeCompact(qint64 seconds)
-{
-    const qint64 days = seconds / 86400;
-    if (days > 0) {
-        return QStringLiteral("%1d").arg(days);
-    }
-
-    const qint64 hours = seconds / 3600;
-    if (hours > 0) {
-        return QStringLiteral("%1h").arg(hours);
-    }
-
-    return QStringLiteral("%1m").arg(seconds / 60);
-}
-
-QString formatUptimeVerbose(qint64 seconds)
-{
-    const qint64 days = seconds / 86400;
-    const qint64 hours = (seconds % 86400) / 3600;
-    const qint64 minutes = (seconds % 3600) / 60;
-    return QStringLiteral("%1d %2h %3m").arg(days).arg(hours).arg(minutes);
-}
-
-} // namespace
-
 SystemInfoPlugin::SystemInfoPlugin(QObject* parent)
     : QObject(parent)
-    , m_timer(new QTimer(this))
 {
-    m_timer->setInterval(m_intervalMs);
-    connect(m_timer, &QTimer::timeout, this, &SystemInfoPlugin::collectAndPublish);
 }
 
 SystemInfoPlugin::~SystemInfoPlugin() = default;
@@ -71,193 +32,76 @@ PluginMetaInfo SystemInfoPlugin::metaInfo() const
 bool SystemInfoPlugin::initialize(IAppContext* context)
 {
     m_context = context;
-    m_collector = SystemInfoCollectorFactory::create();
-    return m_context != nullptr && m_collector != nullptr;
+
+    m_monitorCapability = std::make_unique<SystemInfoMonitorCapability>();
+    m_panelCapability = std::make_unique<SystemInfoPanelCapability>();
+    m_taskbarCapability = std::make_unique<SystemInfoTaskbarCapability>(m_monitorCapability.get());
+    m_settingsCapability = std::make_unique<SystemInfoSettingsCapability>();
+
+    if (!m_monitorCapability->initialize(context)) {
+        shutdown();
+        return false;
+    }
+
+    connect(m_monitorCapability.get(), &SystemInfoMonitorCapability::snapshotUpdated, this,
+        [this](const SystemInfoSnapshot& snapshot) {
+            if (m_panelCapability) {
+                m_panelCapability->updateSnapshot(snapshot);
+            }
+        });
+
+    if (m_panelCapability) {
+        m_panelCapability->updateSnapshot(m_monitorCapability->lastSnapshot());
+    }
+
+    return true;
 }
 
 void SystemInfoPlugin::start()
 {
-    collectAndPublish();
-    m_timer->start();
+    if (m_monitorCapability) {
+        m_monitorCapability->startMonitoring();
+    }
 }
 
 void SystemInfoPlugin::stop()
 {
-    m_timer->stop();
+    if (m_monitorCapability) {
+        m_monitorCapability->stopMonitoring();
+    }
 }
 
 void SystemInfoPlugin::shutdown()
 {
-    m_timer->stop();
-    m_collector.reset();
-    m_panel = nullptr;
+    if (m_monitorCapability) {
+        m_monitorCapability->stopMonitoring();
+    }
+
+    m_settingsCapability.reset();
+    m_taskbarCapability.reset();
+    m_panelCapability.reset();
+    m_monitorCapability.reset();
     m_context = nullptr;
 }
 
-QList<MetricDescriptor> SystemInfoPlugin::metricDescriptors() const
+IMonitorCapability* SystemInfoPlugin::monitorCapability()
 {
-    return {
-        {QStringLiteral("system.device.name"), QStringLiteral("Device Name"),
-            QStringLiteral("Host machine name reported by macOS."), QString(), MetricValueType::String},
-        {QStringLiteral("system.os.version"), QStringLiteral("Operating System"),
-            QStringLiteral("Human-readable macOS version."), QString(), MetricValueType::String},
-        {QStringLiteral("system.cpu.model"), QStringLiteral("CPU Model"),
-            QStringLiteral("Processor brand string."), QString(), MetricValueType::String},
-        {QStringLiteral("system.gpu.model"), QStringLiteral("GPU Model"),
-            QStringLiteral("Primary graphics device model."), QString(), MetricValueType::String},
-        {QStringLiteral("system.memory.total.bytes"), QStringLiteral("Total Memory"),
-            QStringLiteral("Installed physical memory in bytes."), QStringLiteral("B"), MetricValueType::Bytes},
-        {QStringLiteral("system.uptime.seconds"), QStringLiteral("System Uptime"),
-            QStringLiteral("Elapsed time since the last boot."), QStringLiteral("s"), MetricValueType::Integer}
-    };
+    return m_monitorCapability.get();
 }
 
-int SystemInfoPlugin::defaultIntervalMs() const
+IPanelCapability* SystemInfoPlugin::panelCapability()
 {
-    return 5000;
+    return m_panelCapability.get();
 }
 
-void SystemInfoPlugin::setIntervalMs(int intervalMs)
+ITaskbarCapability* SystemInfoPlugin::taskbarCapability()
 {
-    m_intervalMs = qMax(1000, intervalMs);
-    m_timer->setInterval(m_intervalMs);
+    return m_taskbarCapability.get();
 }
 
-QString SystemInfoPlugin::panelId() const
+ISettingsCapability* SystemInfoPlugin::settingsCapability()
 {
-    return QStringLiteral("systeminfo");
-}
-
-QString SystemInfoPlugin::panelName() const
-{
-    return QStringLiteral("System Info");
-}
-
-QString SystemInfoPlugin::panelIconKey() const
-{
-    return QStringLiteral("system");
-}
-
-QWidget* SystemInfoPlugin::createPanel(QWidget* parent)
-{
-    auto* panel = new SystemInfoPanelWidget(parent);
-    panel->applySnapshot(m_lastSnapshot);
-    m_panel = panel;
-    return panel;
-}
-
-QString SystemInfoPlugin::taskbarDisplayText(const QHash<QString, MetricValue>& latestValues) const
-{
-    const MetricValue memoryValue = latestValues.value(QStringLiteral("system.memory.total.bytes"));
-    const MetricValue uptimeValue = latestValues.value(QStringLiteral("system.uptime.seconds"));
-    if (!memoryValue.value.isValid() || !uptimeValue.value.isValid()) {
-        return QString();
-    }
-
-    return QStringLiteral("%1 %2")
-        .arg(formatMemoryCompact(memoryValue.value.toLongLong()))
-        .arg(formatUptimeCompact(uptimeValue.value.toLongLong()));
-}
-
-QString SystemInfoPlugin::taskbarDisplayTooltip(const QHash<QString, MetricValue>& latestValues) const
-{
-    const QString device = latestValues.value(QStringLiteral("system.device.name")).value.toString();
-    const QString os = latestValues.value(QStringLiteral("system.os.version")).value.toString();
-    const QString cpu = latestValues.value(QStringLiteral("system.cpu.model")).value.toString();
-    const QString gpu = latestValues.value(QStringLiteral("system.gpu.model")).value.toString();
-    const qint64 memory = latestValues.value(QStringLiteral("system.memory.total.bytes")).value.toLongLong();
-    const qint64 uptime = latestValues.value(QStringLiteral("system.uptime.seconds")).value.toLongLong();
-
-    QStringList parts;
-    if (!device.isEmpty()) parts.append(device);
-    if (!os.isEmpty()) parts.append(os);
-    if (!cpu.isEmpty()) parts.append(cpu);
-    if (!gpu.isEmpty()) parts.append(gpu);
-    if (memory > 0) parts.append(formatMemoryCompact(memory));
-    if (uptime > 0) parts.append(formatUptimeVerbose(uptime));
-    return parts.join(QStringLiteral(" | "));
-}
-
-bool SystemInfoPlugin::isTaskbarDisplayEnabledByDefault() const
-{
-    return true;
-}
-
-TaskbarDetailContent SystemInfoPlugin::taskbarDetailContent(const QHash<QString, MetricValue>& latestValues) const
-{
-    const QString device = latestValues.value(QStringLiteral("system.device.name")).value.toString();
-    const QString os = latestValues.value(QStringLiteral("system.os.version")).value.toString();
-    const QString cpu = latestValues.value(QStringLiteral("system.cpu.model")).value.toString();
-    const QString gpu = latestValues.value(QStringLiteral("system.gpu.model")).value.toString();
-    const qint64 memory = latestValues.value(QStringLiteral("system.memory.total.bytes")).value.toLongLong();
-    const qint64 uptime = latestValues.value(QStringLiteral("system.uptime.seconds")).value.toLongLong();
-
-    if (device.isEmpty() && os.isEmpty() && cpu.isEmpty() && gpu.isEmpty() && memory <= 0 && uptime <= 0) {
-        return {};
-    }
-
-    TaskbarDetailContent content;
-    content.title = QStringLiteral("System Information");
-    content.subtitle = os;
-    content.primaryLabel = QStringLiteral("Device");
-    content.primaryValue = device.isEmpty() ? QStringLiteral("Vitals") : device;
-    content.accentColor = QStringLiteral("#64d2ff");
-
-    content.badges = {
-        {QStringLiteral("MEMORY"), memory > 0 ? formatMemoryCompact(memory) : QStringLiteral("--")},
-        {QStringLiteral("UPTIME"), uptime > 0 ? formatUptimeCompact(uptime) : QStringLiteral("--")}
-    };
-
-    content.sections.append({
-        QStringLiteral("Hardware"),
-        {
-            {QStringLiteral("CPU"), cpu.isEmpty() ? QStringLiteral("--") : cpu, QString(), -1.0, QString()},
-            {QStringLiteral("GPU"), gpu.isEmpty() ? QStringLiteral("--") : gpu, QString(), -1.0, QString()},
-            {QStringLiteral("Memory"), memory > 0 ? formatMemoryCompact(memory) : QStringLiteral("--"), QString(), -1.0, QString()}
-        }
-    });
-    content.sections.append({
-        QStringLiteral("System"),
-        {
-            {QStringLiteral("Operating System"), os.isEmpty() ? QStringLiteral("--") : os, QString(), -1.0, QString()},
-            {QStringLiteral("Uptime"), uptime > 0 ? formatUptimeVerbose(uptime) : QStringLiteral("--"), QString(), -1.0, QString()}
-        }
-    });
-    return content;
-}
-
-void SystemInfoPlugin::collectAndPublish()
-{
-    if (!m_collector) {
-        return;
-    }
-
-    m_lastSnapshot = m_collector->collect();
-    publishSnapshot(m_lastSnapshot);
-
-    if (m_panel) {
-        m_panel->applySnapshot(m_lastSnapshot);
-    }
-}
-
-void SystemInfoPlugin::publishSnapshot(const SystemInfoSnapshot& snapshot) const
-{
-    if (!m_context || !m_context->metricSink()) {
-        return;
-    }
-
-    MetricFrame frame;
-    frame.pluginId = metaInfo().id;
-    frame.timestamp = QDateTime::currentDateTime();
-    frame.values = {
-        {QStringLiteral("system.device.name"), snapshot.deviceName, frame.timestamp, {}},
-        {QStringLiteral("system.os.version"), snapshot.osVersion, frame.timestamp, {}},
-        {QStringLiteral("system.cpu.model"), snapshot.cpuModel, frame.timestamp, {}},
-        {QStringLiteral("system.gpu.model"), snapshot.gpuModel, frame.timestamp, {}},
-        {QStringLiteral("system.memory.total.bytes"), QVariant::fromValue(snapshot.totalMemoryBytes), frame.timestamp, {}},
-        {QStringLiteral("system.uptime.seconds"), QVariant::fromValue(snapshot.uptimeSeconds), frame.timestamp, {}}
-    };
-    m_context->metricSink()->publishFrame(frame);
+    return m_settingsCapability.get();
 }
 
 } // namespace Vitals
