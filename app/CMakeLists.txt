@@ -18,13 +18,28 @@ add_executable(VitalsApp
     platform/taskbar/TaskbarMenuDetailWidget.cpp
     platform/taskbar/TaskbarIndicatorFactory.h
     platform/taskbar/TaskbarIndicatorFactory.cpp
-    platform/taskbar/WindowsTaskbarIndicator.h
-    platform/taskbar/WindowsTaskbarIndicator.cpp
-    platform/taskbar/MacTaskbarIndicator.h
-    platform/taskbar/MacTaskbarIndicator.mm
-    platform/taskbar/LinuxTaskbarIndicator.h
-    platform/taskbar/LinuxTaskbarIndicator.cpp
 )
+
+target_sources(VitalsApp
+    PRIVATE
+        platform/taskbar/WindowsTaskbarIndicator.h
+        platform/taskbar/WindowsTaskbarIndicator.cpp
+        platform/taskbar/LinuxTaskbarIndicator.h
+        platform/taskbar/LinuxTaskbarIndicator.cpp
+)
+
+if(APPLE)
+    target_sources(VitalsApp
+        PRIVATE
+            platform/taskbar/MacTaskbarIndicator.h
+            platform/taskbar/MacTaskbarIndicator.mm
+    )
+else()
+    target_sources(VitalsApp
+        PRIVATE
+            platform/taskbar/MacTaskbarIndicator.h
+    )
+endif()
 
 set_target_properties(VitalsApp PROPERTIES
     OUTPUT_NAME "Vitals"

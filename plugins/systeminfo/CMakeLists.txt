@@ -9,11 +9,13 @@ add_library(SystemInfoPlugin MODULE
     systeminfo_plugin.json
 )
 
-target_sources(SystemInfoPlugin
-    PRIVATE
-        platform/macos/MacSystemInfoCollector.h
-        platform/macos/MacSystemInfoCollector.mm
-)
+if(APPLE)
+    target_sources(SystemInfoPlugin
+        PRIVATE
+            platform/macos/MacSystemInfoCollector.h
+            platform/macos/MacSystemInfoCollector.mm
+    )
+endif()
 
 target_include_directories(SystemInfoPlugin
     PRIVATE
@@ -25,9 +27,15 @@ target_link_libraries(SystemInfoPlugin
         Vitals::Sdk
         Vitals::Widgets
         ${VITALS_QT_LIBS}
-        "-framework Foundation"
-        "-framework Metal"
 )
+
+if(APPLE)
+    target_link_libraries(SystemInfoPlugin
+        PRIVATE
+            "-framework Foundation"
+            "-framework Metal"
+    )
+endif()
 
 set_target_properties(SystemInfoPlugin PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${VITALS_OUTPUT_DIR}/plugins"

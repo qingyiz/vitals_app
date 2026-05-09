@@ -9,11 +9,13 @@ add_library(CpuMonitorPlugin MODULE
     cpu_plugin.json
 )
 
-target_sources(CpuMonitorPlugin
-    PRIVATE
-        platform/macos/MacCpuCollector.h
-        platform/macos/MacCpuCollector.mm
-)
+if(APPLE)
+    target_sources(CpuMonitorPlugin
+        PRIVATE
+            platform/macos/MacCpuCollector.h
+            platform/macos/MacCpuCollector.mm
+    )
+endif()
 
 target_include_directories(CpuMonitorPlugin
     PRIVATE

@@ -9,11 +9,13 @@ add_library(NetworkMonitorPlugin MODULE
     network_plugin.json
 )
 
-target_sources(NetworkMonitorPlugin
-    PRIVATE
-        platform/macos/MacNetworkCollector.h
-        platform/macos/MacNetworkCollector.mm
-)
+if(APPLE)
+    target_sources(NetworkMonitorPlugin
+        PRIVATE
+            platform/macos/MacNetworkCollector.h
+            platform/macos/MacNetworkCollector.mm
+    )
+endif()
 
 target_include_directories(NetworkMonitorPlugin
     PRIVATE
