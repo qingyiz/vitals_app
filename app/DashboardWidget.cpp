@@ -305,6 +305,7 @@ void DashboardWidget::updateMetricCard(CardWidget* card, const MetricValue& valu
 QString DashboardWidget::pluginTitle(const QString& pluginId) const
 {
     if (pluginId == QStringLiteral("com.vitals.cpu")) return QStringLiteral("CPU Monitor");
+    if (pluginId == QStringLiteral("com.vitals.network")) return QStringLiteral("Network Monitor");
     if (pluginId == QStringLiteral("com.vitals.systeminfo")) return QStringLiteral("System Info");
     return pluginId;
 }
@@ -312,6 +313,7 @@ QString DashboardWidget::pluginTitle(const QString& pluginId) const
 QString DashboardWidget::primaryMetricKeyForPlugin(const QString& pluginId) const
 {
     if (pluginId == QStringLiteral("com.vitals.cpu")) return QStringLiteral("cpu.usage.total");
+    if (pluginId == QStringLiteral("com.vitals.network")) return QStringLiteral("network.download.rate");
     if (pluginId == QStringLiteral("com.vitals.systeminfo")) return QStringLiteral("system.memory.total.bytes");
     return {};
 }
@@ -346,6 +348,17 @@ QString DashboardWidget::summaryHintForPlugin(const QString& pluginId) const
         }
     }
 
+    if (pluginId == QStringLiteral("com.vitals.network")) {
+        const QString primary = pluginValues.value(QStringLiteral("network.interface.primary")).value.toString();
+        const double up = pluginValues.value(QStringLiteral("network.upload.rate")).value.toDouble();
+        if (!primary.isEmpty()) {
+            return QStringLiteral("%1  |  Up %2/s").arg(primary, formatBytes(up));
+        }
+        if (up > 0.0) {
+            return QStringLiteral("Up %1/s").arg(formatBytes(up));
+        }
+    }
+
     const auto values = pluginValues.values();
     if (!values.isEmpty()) {
         return displayHintForMetric(values.first());
@@ -368,8 +381,14 @@ QString DashboardWidget::displayTitleForMetric(const QString& key) const
         }
     }
     if (key == QStringLiteral("memory.usage.percent")) return QStringLiteral("Memory");
+    if (key == QStringLiteral("network.interface.primary")) return QStringLiteral("Primary Interface");
+    if (key == QStringLiteral("network.interfaces.active")) return QStringLiteral("Active Interfaces");
     if (key == QStringLiteral("network.upload.speed")) return QStringLiteral("Upload");
     if (key == QStringLiteral("network.download.speed")) return QStringLiteral("Download");
+    if (key == QStringLiteral("network.upload.rate")) return QStringLiteral("Upload");
+    if (key == QStringLiteral("network.download.rate")) return QStringLiteral("Download");
+    if (key == QStringLiteral("network.download.total.bytes")) return QStringLiteral("Total Received");
+    if (key == QStringLiteral("network.upload.total.bytes")) return QStringLiteral("Total Sent");
     if (key == QStringLiteral("disk.read.speed")) return QStringLiteral("Disk Read");
     if (key == QStringLiteral("disk.write.speed")) return QStringLiteral("Disk Write");
     if (key == QStringLiteral("battery.level.percent")) return QStringLiteral("Battery");
@@ -390,6 +409,9 @@ QString DashboardWidget::displayValueForMetric(const MetricValue& value) const
     if (key.endsWith(QStringLiteral(".speed"))) {
         const double bytesPerSecond = value.value.toDouble();
         return QStringLiteral("%1/s").arg(formatBytes(bytesPerSecond));
+    }
+    if (key.endsWith(QStringLiteral(".rate"))) {
+        return QStringLiteral("%1/s").arg(formatBytes(value.value.toDouble()));
     }
     if (key.endsWith(QStringLiteral(".bytes"))) {
         return formatBytes(value.value.toDouble());

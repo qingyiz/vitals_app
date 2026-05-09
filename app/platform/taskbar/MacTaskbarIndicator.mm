@@ -311,9 +311,35 @@ public:
     }
 
     MacTaskbarIndicator* indicator = nullptr;
-    NSStatusItem* statusItem = nil;
-    NSMenu* menu = nil;
-    NSMenuItem* detailItem = nil;
+    struct Entry
+    {
+        QString pluginId;
+        NSStatusItem* statusItem = nil;
+        NSMenu* menu = nil;
+        NSMenuItem* detailItem = nil;
+    };
+
+    static void disposeEntry(const Entry& entry)
+    {
+        if (entry.detailItem) {
+            [entry.detailItem setView:nil];
+        }
+        if (entry.statusItem) {
+            [entry.statusItem setMenu:nil];
+            [[NSStatusBar systemStatusBar] removeStatusItem:entry.statusItem];
+            [entry.statusItem release];
+        }
+        if (entry.menu) {
+            [entry.menu release];
+        }
+        if (entry.detailItem) {
+            [entry.detailItem release];
+        }
+    }
+
+    QList<Entry> entries;
+    bool isRefreshing = false;
+    bool refreshPending = false;
 };
 
 } // namespace Vitals
@@ -346,8 +372,8 @@ MacTaskbarIndicator::~MacTaskbarIndicator()
         return;
     }
 
-    if (m_nativeBridge->statusItem) {
-        [[NSStatusBar systemStatusBar] removeStatusItem:m_nativeBridge->statusItem];
+    for (const NativeBridge::Entry& entry : m_nativeBridge->entries) {
+        NativeBridge::disposeEntry(entry);
     }
 
     delete m_nativeBridge;
@@ -362,20 +388,9 @@ void MacTaskbarIndicator::initialize(QWidget* mainWindow)
         m_nativeBridge = new NativeBridge(this);
     }
 
-    if (m_nativeBridge->statusItem) {
+    if (!m_nativeBridge->entries.isEmpty()) {
         return;
     }
-
-    m_nativeBridge->statusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength];
-    m_nativeBridge->menu = [[NSMenu alloc] initWithTitle:@"Vitals"];
-
-    m_nativeBridge->detailItem = [[NSMenuItem alloc] initWithTitle:@"Vitals"
-                                                            action:nil
-                                                     keyEquivalent:@""];
-    [m_nativeBridge->detailItem setEnabled:NO];
-    [m_nativeBridge->menu addItem:m_nativeBridge->detailItem];
-
-    [m_nativeBridge->statusItem setMenu:m_nativeBridge->menu];
     refresh();
 }
 
@@ -411,34 +426,94 @@ int MacTaskbarIndicator::maximumVisibleLabelLength() const
 
 void MacTaskbarIndicator::refresh()
 {
-    if (!m_nativeBridge || !m_nativeBridge->statusItem) {
+    if (!m_nativeBridge) {
         TaskbarIndicator::refresh();
         return;
     }
 
-    if (!hasPluginDisplays()) {
-        [m_nativeBridge->statusItem setVisible:NO];
-        [m_nativeBridge->detailItem setView:nil];
-        [m_nativeBridge->detailItem setTitle:@"Vitals: taskbar display disabled"];
+    if (m_nativeBridge->isRefreshing) {
+        m_nativeBridge->refreshPending = true;
         return;
     }
 
-    const QString label = currentLabel().left(maximumVisibleLabelLength());
-    const QString tooltip = currentTooltip();
+    m_nativeBridge->isRefreshing = true;
 
-    NSStatusBarButton* button = [m_nativeBridge->statusItem button];
-    if (button) {
-        const QString visibleTitle = label.isEmpty() ? idleText() : label;
-        const QPixmap pixmap = buildPixmap(visibleTitle);
-        [button setTitle:@""];
-        [button setToolTip:nsStringFromQString(tooltip)];
-        [button setImage:nsImageFromQPixmap(pixmap, prefersSystemTintedText())];
-        [button setImagePosition:NSImageOnly];
-    }
+    auto rebuildEntries = [this]() {
+        for (const NativeBridge::Entry& entry : m_nativeBridge->entries) {
+            NativeBridge::disposeEntry(entry);
+        }
+        m_nativeBridge->entries.clear();
 
-    [m_nativeBridge->detailItem setTitle:@""];
-    [m_nativeBridge->detailItem setView:detailMenuView(currentDetailContents())];
-    [m_nativeBridge->statusItem setVisible:YES];
+        for (const TaskbarPluginDisplay& display : pluginDisplays()) {
+            NativeBridge::Entry entry;
+            entry.pluginId = display.pluginId;
+            entry.statusItem = [[[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength] retain];
+            entry.menu = [[NSMenu alloc] initWithTitle:nsStringFromQString(display.pluginName)];
+            entry.detailItem = [[NSMenuItem alloc] initWithTitle:nsStringFromQString(display.pluginName)
+                                                           action:nil
+                                                    keyEquivalent:@""];
+            [entry.detailItem setEnabled:NO];
+            [entry.menu addItem:entry.detailItem];
+            [entry.statusItem setMenu:entry.menu];
+            m_nativeBridge->entries.append(entry);
+        }
+    };
+
+    do {
+        m_nativeBridge->refreshPending = false;
+
+        const QList<TaskbarPluginDisplay> displays = pluginDisplays();
+        const QHash<QString, MetricValue> values = latestValues();
+
+        bool needsRebuild = m_nativeBridge->entries.size() != displays.size();
+        if (!needsRebuild) {
+            for (int index = 0; index < m_nativeBridge->entries.size(); ++index) {
+                if (m_nativeBridge->entries.at(index).pluginId != displays.at(index).pluginId) {
+                    needsRebuild = true;
+                    break;
+                }
+            }
+        }
+        if (needsRebuild) {
+            rebuildEntries();
+        }
+
+        if (displays.isEmpty()) {
+            continue;
+        }
+
+        const int entryCount = qMin(displays.size(), m_nativeBridge->entries.size());
+        for (int index = 0; index < entryCount; ++index) {
+            const TaskbarPluginDisplay& display = displays.at(index);
+            NativeBridge::Entry& entry = m_nativeBridge->entries[index];
+            if (!entry.statusItem) {
+                continue;
+            }
+
+            const QString label = labelForDisplay(display, values).left(maximumVisibleLabelLength());
+            const QString tooltip = tooltipForDisplay(display, values);
+
+            NSStatusBarButton* button = [entry.statusItem button];
+            if (!button) {
+                continue;
+            }
+
+            const QString visibleTitle = label.isEmpty() ? idleText() : label;
+            const QPixmap pixmap = buildPixmap(visibleTitle);
+            [button setTitle:@""];
+            [button setToolTip:nsStringFromQString(tooltip)];
+            [button setImage:nsImageFromQPixmap(pixmap, prefersSystemTintedText())];
+            [button setImagePosition:NSImageOnly];
+
+            const TaskbarDetailContent content = detailContentForDisplay(display, values);
+            [entry.detailItem setTitle:@""];
+            [entry.detailItem setView:detailMenuView(content.isEmpty() ? QList<TaskbarDetailContent>{}
+                                                                       : QList<TaskbarDetailContent>{content})];
+            [entry.statusItem setVisible:YES];
+        }
+    } while (m_nativeBridge->refreshPending);
+
+    m_nativeBridge->isRefreshing = false;
 }
 
 } // namespace Vitals

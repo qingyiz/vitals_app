@@ -143,6 +143,8 @@ protected:
 
     /// Returns whether any plugin currently participates in taskbar display.
     bool hasPluginDisplays() const;
+    const QList<TaskbarPluginDisplay>& pluginDisplays() const;
+    const QHash<QString, MetricValue>& latestValues() const;
 
     /// Returns the current compact text that should be shown in the taskbar surface.
     QString currentLabel() const;
@@ -152,6 +154,9 @@ protected:
 
     /// Returns structured detail content for the current menu snapshot.
     QList<TaskbarDetailContent> currentDetailContents() const;
+    QString labelForDisplay(const TaskbarPluginDisplay& display, const QHash<QString, MetricValue>& latestValues) const;
+    QString tooltipForDisplay(const TaskbarPluginDisplay& display, const QHash<QString, MetricValue>& latestValues) const;
+    TaskbarDetailContent detailContentForDisplay(const TaskbarPluginDisplay& display, const QHash<QString, MetricValue>& latestValues) const;
 
     /// Formats one metric value for human-readable summary display.
     QString formatMetricValue(const MetricValue& value) const;

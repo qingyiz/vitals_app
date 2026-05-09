@@ -94,9 +94,10 @@ QList<QStringList> candidateLayouts(const QString& label)
 
 TextLayout bestTextLayout(const QString& label)
 {
-    constexpr int kMaxWidth = 40;
+    const bool hasExplicitMultiline = label.contains(QLatin1Char('\n'));
+    const int kMaxWidth = hasExplicitMultiline ? 72 : 40;
     constexpr int kMinWidth = 22;
-    constexpr int kMaxHeight = 22;
+    const int kMaxHeight = hasExplicitMultiline ? 26 : 22;
     constexpr int kHorizontalPadding = 4;
 
     TextLayout best;
@@ -332,6 +333,16 @@ bool TaskbarIndicator::hasPluginDisplays() const
     return !m_pluginDisplays.isEmpty();
 }
 
+const QList<TaskbarPluginDisplay>& TaskbarIndicator::pluginDisplays() const
+{
+    return m_pluginDisplays;
+}
+
+const QHash<QString, MetricValue>& TaskbarIndicator::latestValues() const
+{
+    return m_latestValues;
+}
+
 QString TaskbarIndicator::currentLabel() const
 {
     return iconLabel(m_latestValues);
@@ -347,30 +358,65 @@ QList<TaskbarDetailContent> TaskbarIndicator::currentDetailContents() const
     QList<TaskbarDetailContent> contents;
 
     for (const TaskbarPluginDisplay& display : m_pluginDisplays) {
-        TaskbarDetailContent content;
-        if (display.detailProvider) {
-            content = display.detailProvider->taskbarDetailContent(m_latestValues);
-        }
-
-        if (content.isEmpty() && display.provider) {
-            const QString label = display.provider->taskbarDisplayText(m_latestValues).trimmed();
-            const QString tooltip = display.provider->taskbarDisplayTooltip(m_latestValues).trimmed();
-            if (!label.isEmpty() || !tooltip.isEmpty()) {
-                content.title = display.pluginName;
-                content.primaryValue = label;
-                content.subtitle = tooltip;
-            }
-        }
-
+        TaskbarDetailContent content = detailContentForDisplay(display, m_latestValues);
         if (!content.isEmpty()) {
-            if (content.title.isEmpty()) {
-                content.title = display.pluginName;
-            }
             contents.append(content);
         }
     }
 
     return contents;
+}
+
+QString TaskbarIndicator::labelForDisplay(
+    const TaskbarPluginDisplay& display,
+    const QHash<QString, MetricValue>& latestValues) const
+{
+    if (!display.provider) {
+        return {};
+    }
+
+    return display.provider->taskbarDisplayText(latestValues).trimmed();
+}
+
+QString TaskbarIndicator::tooltipForDisplay(
+    const TaskbarPluginDisplay& display,
+    const QHash<QString, MetricValue>& latestValues) const
+{
+    const QString label = labelForDisplay(display, latestValues);
+    if (!display.provider) {
+        return label;
+    }
+
+    QString tooltip = display.provider->taskbarDisplayTooltip(latestValues).trimmed();
+    if (tooltip.isEmpty()) {
+        tooltip = label;
+    }
+    return tooltip;
+}
+
+TaskbarDetailContent TaskbarIndicator::detailContentForDisplay(
+    const TaskbarPluginDisplay& display,
+    const QHash<QString, MetricValue>& latestValues) const
+{
+    TaskbarDetailContent content;
+    if (display.detailProvider) {
+        content = display.detailProvider->taskbarDetailContent(latestValues);
+    }
+
+    if (content.isEmpty()) {
+        const QString label = labelForDisplay(display, latestValues);
+        const QString tooltip = tooltipForDisplay(display, latestValues);
+        if (!label.isEmpty() || !tooltip.isEmpty()) {
+            content.title = display.pluginName;
+            content.primaryValue = label;
+            content.subtitle = tooltip;
+        }
+    }
+
+    if (!content.isEmpty() && content.title.isEmpty()) {
+        content.title = display.pluginName;
+    }
+    return content;
 }
 
 void TaskbarIndicator::emitShowRequested()
@@ -490,6 +536,7 @@ QIcon TaskbarIndicator::buildIcon(const QString& label) const
 QPixmap TaskbarIndicator::buildPixmap(const QString& label) const
 {
     const QString visibleLabel = label.left(maximumVisibleLabelLength());
+    const bool hasExplicitMultiline = visibleLabel.contains(QLatin1Char('\n'));
 
     if (prefersTextOnlyDisplay()) {
         const qreal devicePixelRatio = m_mainWindow ? m_mainWindow->devicePixelRatioF() : qApp->devicePixelRatio();
@@ -516,15 +563,19 @@ QPixmap TaskbarIndicator::buildPixmap(const QString& label) const
         const int lineHeight = metrics.height();
         const int totalTextHeight = layout.lines.size() * lineHeight;
         const qreal startY = (height - totalTextHeight) / 2.0;
+        const Qt::Alignment lineAlignment = hasExplicitMultiline
+            ? static_cast<Qt::Alignment>(Qt::AlignLeft | Qt::AlignVCenter)
+            : Qt::AlignCenter;
+        const qreal leftPadding = hasExplicitMultiline ? 3.0 : 0.0;
 
         for (int index = 0; index < layout.lines.size(); ++index) {
-            const QRectF lineRect(0.0, startY + index * lineHeight, width, lineHeight);
+            const QRectF lineRect(leftPadding, startY + index * lineHeight, width - leftPadding, lineHeight);
             if (!useSystemTint) {
                 painter.setPen(preferredTextHaloColor(textColor));
-                painter.drawText(lineRect.translated(0.0, 0.5), Qt::AlignCenter, layout.lines.at(index));
+                painter.drawText(lineRect.translated(0.0, 0.5), lineAlignment, layout.lines.at(index));
             }
             painter.setPen(textColor);
-            painter.drawText(lineRect, Qt::AlignCenter, layout.lines.at(index));
+            painter.drawText(lineRect, lineAlignment, layout.lines.at(index));
         }
         return pixmap;
     }
