@@ -358,6 +358,15 @@ QString DashboardWidget::displayTitleForMetric(const QString& key) const
     if (key.startsWith(QStringLiteral("com.vitals."))) return pluginTitle(key);
     if (key == QStringLiteral("framework.status")) return QStringLiteral("Framework");
     if (key == QStringLiteral("cpu.usage.total")) return QStringLiteral("CPU");
+    if (key == QStringLiteral("cpu.logical.cores")) return QStringLiteral("Logical Cores");
+    if (key == QStringLiteral("cpu.model")) return QStringLiteral("Processor");
+    if (key.startsWith(QStringLiteral("cpu.usage.core"))) {
+        bool ok = false;
+        const int coreIndex = key.mid(QStringLiteral("cpu.usage.core").size()).toInt(&ok);
+        if (ok) {
+            return QStringLiteral("Core %1").arg(coreIndex + 1);
+        }
+    }
     if (key == QStringLiteral("memory.usage.percent")) return QStringLiteral("Memory");
     if (key == QStringLiteral("network.upload.speed")) return QStringLiteral("Upload");
     if (key == QStringLiteral("network.download.speed")) return QStringLiteral("Download");
@@ -374,7 +383,8 @@ QString DashboardWidget::displayValueForMetric(const MetricValue& value) const
 {
     const QString key = value.key;
     if (key.endsWith(QStringLiteral(".percent"))
-        || key == QStringLiteral("cpu.usage.total")) {
+        || key == QStringLiteral("cpu.usage.total")
+        || key.startsWith(QStringLiteral("cpu.usage.core"))) {
         return QStringLiteral("%1%").arg(value.value.toDouble(), 0, 'f', 0);
     }
     if (key.endsWith(QStringLiteral(".speed"))) {
