@@ -3,9 +3,12 @@
 #include "CardWidget.h"
 #include "metric/MetricCenter.h"
 
+#include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QPushButton>
+#include <QScrollArea>
 #include <QVBoxLayout>
 #include <QVariant>
 
@@ -51,29 +54,242 @@ DashboardWidget::DashboardWidget(QWidget* parent)
     header->addWidget(m_statusLabel);
     root->addLayout(header);
 
-    m_grid = new QGridLayout();
-    m_grid->setHorizontalSpacing(14);
-    m_grid->setVerticalSpacing(14);
-    root->addLayout(m_grid);
-    root->addStretch();
+    auto* scrollArea = new QScrollArea(this);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    auto* welcomeCard = ensureCard(QStringLiteral("framework.status"));
-    welcomeCard->setValueText(QStringLiteral("Ready"));
-    welcomeCard->setHintText(QStringLiteral("Host, plugins, taskbar indicator"));
-    welcomeCard->setAccentColor(QColor(QStringLiteral("#5e5ce6")));
+    auto* content = new QWidget(scrollArea);
+    m_groupLayout = new QVBoxLayout(content);
+    m_groupLayout->setContentsMargins(0, 0, 0, 0);
+    m_groupLayout->setSpacing(14);
+    m_groupLayout->setAlignment(Qt::AlignTop);
+
+    m_emptyLabel = new QLabel(QStringLiteral("Waiting for plugin metrics"), content);
+    m_emptyLabel->setObjectName(QStringLiteral("panelBody"));
+    m_emptyLabel->setAlignment(Qt::AlignCenter);
+    m_groupLayout->addWidget(m_emptyLabel);
+
+    scrollArea->setWidget(content);
+    root->addWidget(scrollArea, 1);
 }
 
 void DashboardWidget::bindMetricCenter(MetricCenter* metricCenter)
 {
-    connect(metricCenter, &MetricCenter::metricUpdated,
-        this, &DashboardWidget::updateMetric);
+    connect(metricCenter, &MetricCenter::framePublished,
+        this, &DashboardWidget::updateFrame);
     connect(metricCenter, &MetricCenter::metricRemoved,
         this, &DashboardWidget::removeMetric);
 }
 
-void DashboardWidget::updateMetric(const MetricValue& value)
+void DashboardWidget::updateFrame(const MetricFrame& frame)
 {
-    CardWidget* card = ensureCard(value.key);
+    if (frame.pluginId.isEmpty()) {
+        return;
+    }
+
+    QHash<QString, MetricValue>& pluginValues = m_pluginMetrics[frame.pluginId];
+    for (const MetricValue& value : frame.values) {
+        pluginValues.insert(value.key, value);
+        m_metricOwners.insert(value.key, frame.pluginId);
+    }
+
+    updatePluginSummary(frame.pluginId);
+    m_statusLabel->setText(QStringLiteral("Live"));
+    if (m_emptyLabel) {
+        m_emptyLabel->hide();
+    }
+}
+
+void DashboardWidget::removeMetric(const QString& key)
+{
+    const QString pluginId = m_metricOwners.take(key);
+    if (pluginId.isEmpty()) {
+        return;
+    }
+
+    QHash<QString, MetricValue>& pluginValues = m_pluginMetrics[pluginId];
+    pluginValues.remove(key);
+    if (pluginValues.isEmpty()) {
+        m_pluginMetrics.remove(pluginId);
+        removePluginGroup(pluginId);
+    } else {
+        PluginGroup& group = ensurePluginGroup(pluginId);
+        CardWidget* metricCard = group.metricCards.take(key);
+        if (metricCard) {
+            group.detailsGrid->removeWidget(metricCard);
+            metricCard->deleteLater();
+            relayoutMetricCards(group);
+        }
+        updatePluginSummary(pluginId);
+    }
+
+    if (m_groups.isEmpty()) {
+        m_statusLabel->setText(QStringLiteral("Waiting for metrics"));
+        if (m_emptyLabel) {
+            m_emptyLabel->show();
+        }
+    }
+}
+
+DashboardWidget::PluginGroup& DashboardWidget::ensurePluginGroup(const QString& pluginId)
+{
+    PluginGroup& group = m_groups[pluginId];
+    if (group.container) {
+        return group;
+    }
+
+    group.container = new QFrame(this);
+    group.container->setObjectName(QStringLiteral("dashboardPluginGroup"));
+    group.container->setStyleSheet(QStringLiteral(R"(
+        QFrame#dashboardPluginGroup {
+            background: rgba(255, 255, 255, 0.70);
+            border: 1px solid #dedee3;
+            border-radius: 10px;
+        }
+        QPushButton#dashboardGroupToggle {
+            background: transparent;
+            border: none;
+            color: #1d252d;
+            font-size: 15px;
+            font-weight: 700;
+            text-align: left;
+            padding: 0;
+        }
+    )"));
+
+    auto* groupLayout = new QVBoxLayout(group.container);
+    groupLayout->setContentsMargins(14, 12, 14, 14);
+    groupLayout->setSpacing(12);
+
+    auto* header = new QHBoxLayout();
+    header->setSpacing(10);
+
+    group.toggleButton = new QPushButton(group.container);
+    group.toggleButton->setObjectName(QStringLiteral("dashboardGroupToggle"));
+    group.toggleButton->setCheckable(true);
+    group.toggleButton->setChecked(false);
+    group.toggleButton->setCursor(Qt::PointingHandCursor);
+
+    group.subtitleLabel = new QLabel(group.container);
+    group.subtitleLabel->setObjectName(QStringLiteral("panelBody"));
+
+    header->addWidget(group.toggleButton, 1);
+    header->addWidget(group.subtitleLabel);
+    groupLayout->addLayout(header);
+
+    group.summaryCard = new CardWidget(pluginTitle(pluginId), group.container);
+    groupLayout->addWidget(group.summaryCard);
+
+    group.detailsContainer = new QWidget(group.container);
+    group.detailsGrid = new QGridLayout(group.detailsContainer);
+    group.detailsGrid->setContentsMargins(0, 0, 0, 0);
+    group.detailsGrid->setHorizontalSpacing(12);
+    group.detailsGrid->setVerticalSpacing(12);
+    group.detailsContainer->hide();
+    groupLayout->addWidget(group.detailsContainer);
+
+    connect(group.toggleButton, &QPushButton::toggled, this, [this, pluginId](bool checked) {
+        PluginGroup& currentGroup = m_groups[pluginId];
+        currentGroup.expanded = checked;
+        if (currentGroup.detailsContainer) {
+            currentGroup.detailsContainer->setVisible(checked);
+        }
+        updateGroupHeader(pluginId);
+    });
+
+    m_groupLayout->addWidget(group.container);
+    updateGroupHeader(pluginId);
+    return group;
+}
+
+CardWidget* DashboardWidget::ensureMetricCard(const QString& pluginId, const QString& metricKey)
+{
+    PluginGroup& group = ensurePluginGroup(pluginId);
+    if (group.metricCards.contains(metricKey)) {
+        return group.metricCards.value(metricKey);
+    }
+
+    auto* card = new CardWidget(displayTitleForMetric(metricKey), group.detailsContainer);
+    card->setAccentColor(accentColorForMetric(metricKey));
+    group.metricCards.insert(metricKey, card);
+    relayoutMetricCards(group);
+    return card;
+}
+
+void DashboardWidget::removePluginGroup(const QString& pluginId)
+{
+    PluginGroup group = m_groups.take(pluginId);
+    if (!group.container) {
+        return;
+    }
+
+    m_groupLayout->removeWidget(group.container);
+    group.container->deleteLater();
+}
+
+void DashboardWidget::relayoutMetricCards(PluginGroup& group)
+{
+    int index = 0;
+    QStringList keys = group.metricCards.keys();
+    keys.sort();
+    for (const QString& key : keys) {
+        CardWidget* card = group.metricCards.value(key);
+        group.detailsGrid->addWidget(card, index / 3, index % 3);
+        ++index;
+    }
+}
+
+void DashboardWidget::updatePluginSummary(const QString& pluginId)
+{
+    const QHash<QString, MetricValue> pluginValues = m_pluginMetrics.value(pluginId);
+    if (pluginValues.isEmpty()) {
+        return;
+    }
+
+    PluginGroup& group = ensurePluginGroup(pluginId);
+    CardWidget* summaryCard = group.summaryCard;
+    summaryCard->setAccentColor(accentColorForMetric(primaryMetricKeyForPlugin(pluginId)));
+
+    for (const MetricValue& value : pluginValues) {
+        updateMetricCard(ensureMetricCard(pluginId, value.key), value);
+    }
+
+    const QString primaryKey = primaryMetricKeyForPlugin(pluginId);
+    if (pluginValues.contains(primaryKey)) {
+        const MetricValue value = pluginValues.value(primaryKey);
+        summaryCard->setValueText(displayValueForMetric(value));
+        summaryCard->setHintText(summaryHintForPlugin(pluginId));
+
+        const int progress = progressForMetric(value);
+        if (progress >= 0) {
+            summaryCard->setProgressValue(progress);
+        } else {
+            summaryCard->clearProgress();
+        }
+        updateGroupHeader(pluginId);
+        return;
+    }
+
+    const MetricValue fallback = pluginValues.cbegin().value();
+    summaryCard->setValueText(displayValueForMetric(fallback));
+    summaryCard->setHintText(summaryHintForPlugin(pluginId));
+    summaryCard->clearProgress();
+    updateGroupHeader(pluginId);
+}
+
+void DashboardWidget::updateGroupHeader(const QString& pluginId)
+{
+    PluginGroup& group = ensurePluginGroup(pluginId);
+    const QString marker = group.expanded ? QStringLiteral("v") : QStringLiteral(">");
+    group.toggleButton->setText(QStringLiteral("%1 %2").arg(marker, pluginTitle(pluginId)));
+
+    const int metricCount = m_pluginMetrics.value(pluginId).size();
+    group.subtitleLabel->setText(QStringLiteral("%1 metrics").arg(metricCount));
+}
+
+void DashboardWidget::updateMetricCard(CardWidget* card, const MetricValue& value)
+{
     card->setValueText(displayValueForMetric(value));
     card->setHintText(displayHintForMetric(value));
     card->setAccentColor(accentColorForMetric(value.key));
@@ -84,52 +300,62 @@ void DashboardWidget::updateMetric(const MetricValue& value)
     } else {
         card->clearProgress();
     }
-
-    m_statusLabel->setText(QStringLiteral("Live"));
 }
 
-CardWidget* DashboardWidget::ensureCard(const QString& key)
+QString DashboardWidget::pluginTitle(const QString& pluginId) const
 {
-    if (m_cards.contains(key)) {
-        return m_cards.value(key);
-    }
-
-    auto* card = new CardWidget(displayTitleForMetric(key), this);
-    card->setAccentColor(accentColorForMetric(key));
-    const int index = m_cards.size();
-    m_grid->addWidget(card, index / 3, index % 3);
-    m_cards.insert(key, card);
-    return card;
+    if (pluginId == QStringLiteral("com.vitals.cpu")) return QStringLiteral("CPU Monitor");
+    if (pluginId == QStringLiteral("com.vitals.systeminfo")) return QStringLiteral("System Info");
+    return pluginId;
 }
 
-void DashboardWidget::removeMetric(const QString& key)
+QString DashboardWidget::primaryMetricKeyForPlugin(const QString& pluginId) const
 {
-    CardWidget* card = m_cards.take(key);
-    if (!card) {
-        return;
-    }
-
-    m_grid->removeWidget(card);
-    card->deleteLater();
-    relayoutCards();
-
-    if (m_cards.size() <= 1 && m_cards.contains(QStringLiteral("framework.status"))) {
-        m_statusLabel->setText(QStringLiteral("Waiting for metrics"));
-    }
+    if (pluginId == QStringLiteral("com.vitals.cpu")) return QStringLiteral("cpu.usage.total");
+    if (pluginId == QStringLiteral("com.vitals.systeminfo")) return QStringLiteral("system.memory.total.bytes");
+    return {};
 }
 
-void DashboardWidget::relayoutCards()
+QString DashboardWidget::summaryHintForPlugin(const QString& pluginId) const
 {
-    const QList<CardWidget*> cards = m_cards.values();
-    int index = 0;
-    for (CardWidget* card : cards) {
-        m_grid->addWidget(card, index / 3, index % 3);
-        ++index;
+    const QHash<QString, MetricValue> pluginValues = m_pluginMetrics.value(pluginId);
+    if (pluginId == QStringLiteral("com.vitals.cpu")) {
+        const int cores = pluginValues.value(QStringLiteral("cpu.logical.cores")).value.toInt();
+        double peak = 0.0;
+        for (int index = 0; index < cores; ++index) {
+            peak = qMax(peak, pluginValues.value(QStringLiteral("cpu.usage.core%1").arg(index)).value.toDouble());
+        }
+        if (cores > 0) {
+            return QStringLiteral("%1 cores  |  Peak %2%")
+                .arg(cores)
+                .arg(peak, 0, 'f', 0);
+        }
     }
+
+    if (pluginId == QStringLiteral("com.vitals.systeminfo")) {
+        const QString device = pluginValues.value(QStringLiteral("system.device.name")).value.toString();
+        const qint64 uptime = pluginValues.value(QStringLiteral("system.uptime.seconds")).value.toLongLong();
+        if (!device.isEmpty() && uptime > 0) {
+            return QStringLiteral("%1  |  Uptime %2h %3m")
+                .arg(device)
+                .arg(uptime / 3600)
+                .arg((uptime % 3600) / 60);
+        }
+        if (!device.isEmpty()) {
+            return device;
+        }
+    }
+
+    const auto values = pluginValues.values();
+    if (!values.isEmpty()) {
+        return displayHintForMetric(values.first());
+    }
+    return QStringLiteral("Plugin summary");
 }
 
 QString DashboardWidget::displayTitleForMetric(const QString& key) const
 {
+    if (key.startsWith(QStringLiteral("com.vitals."))) return pluginTitle(key);
     if (key == QStringLiteral("framework.status")) return QStringLiteral("Framework");
     if (key == QStringLiteral("cpu.usage.total")) return QStringLiteral("CPU");
     if (key == QStringLiteral("memory.usage.percent")) return QStringLiteral("Memory");

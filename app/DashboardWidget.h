@@ -2,11 +2,14 @@
 
 #include "MetricData.h"
 
-#include <QWidget>
 #include <QHash>
+#include <QWidget>
 
 class QGridLayout;
 class QLabel;
+class QPushButton;
+class QVBoxLayout;
+class QFrame;
 
 namespace Vitals {
 
@@ -40,14 +43,34 @@ public:
     void bindMetricCenter(MetricCenter* metricCenter);
 
 private Q_SLOTS:
-    /// Re-renders one card when a metric value changes.
-    void updateMetric(const Vitals::MetricValue& value);
+    /// Re-renders one plugin summary when a metric frame changes.
+    void updateFrame(const Vitals::MetricFrame& frame);
     /// Removes one card when the owning plugin is unloaded.
     void removeMetric(const QString& key);
 
 private:
-    CardWidget* ensureCard(const QString& key);
-    void relayoutCards();
+    struct PluginGroup
+    {
+        QFrame* container = nullptr;
+        QPushButton* toggleButton = nullptr;
+        QLabel* subtitleLabel = nullptr;
+        CardWidget* summaryCard = nullptr;
+        QWidget* detailsContainer = nullptr;
+        QGridLayout* detailsGrid = nullptr;
+        QHash<QString, CardWidget*> metricCards;
+        bool expanded = false;
+    };
+
+    PluginGroup& ensurePluginGroup(const QString& pluginId);
+    CardWidget* ensureMetricCard(const QString& pluginId, const QString& metricKey);
+    void removePluginGroup(const QString& pluginId);
+    void relayoutMetricCards(PluginGroup& group);
+    void updatePluginSummary(const QString& pluginId);
+    void updateGroupHeader(const QString& pluginId);
+    void updateMetricCard(CardWidget* card, const MetricValue& value);
+    QString pluginTitle(const QString& pluginId) const;
+    QString primaryMetricKeyForPlugin(const QString& pluginId) const;
+    QString summaryHintForPlugin(const QString& pluginId) const;
     QString displayTitleForMetric(const QString& key) const;
     QString displayValueForMetric(const MetricValue& value) const;
     QString displayHintForMetric(const MetricValue& value) const;
@@ -55,8 +78,11 @@ private:
     int progressForMetric(const MetricValue& value) const;
 
     QLabel* m_statusLabel = nullptr;
-    QGridLayout* m_grid = nullptr;
-    QHash<QString, CardWidget*> m_cards;
+    QVBoxLayout* m_groupLayout = nullptr;
+    QLabel* m_emptyLabel = nullptr;
+    QHash<QString, PluginGroup> m_groups;
+    QHash<QString, QString> m_metricOwners;
+    QHash<QString, QHash<QString, MetricValue>> m_pluginMetrics;
 };
 
 } // namespace Vitals
