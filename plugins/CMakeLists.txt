@@ -1,4 +1,3 @@
-add_subdirectory(hello)
 if(APPLE)
     add_subdirectory(cpu)
     add_subdirectory(systeminfo)

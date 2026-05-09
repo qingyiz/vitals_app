@@ -32,6 +32,6 @@ The initial framework includes:
 - Platform-aware plugin loading through `supportedPlatforms` metadata.
 - Qt host application with dashboard and navigation.
 - Cross-platform taskbar/tray/menu-bar indicator fed by `MetricCenter`.
-- A dynamically loaded `HelloPlugin`.
+- CPU and system information plugins loaded through the plugin runtime.
 
 See `docs/TASK_PLAN.md` for the current task plan.

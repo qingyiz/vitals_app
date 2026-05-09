@@ -238,8 +238,7 @@ QString TaskbarIndicator::iconLabel(const QHash<QString, MetricValue>& latestVal
 
     const QStringList priorityKeys = {
         QStringLiteral("cpu.usage.total"),
-        QStringLiteral("memory.usage.percent"),
-        QStringLiteral("hello.plugin.status")
+        QStringLiteral("memory.usage.percent")
     };
 
     for (const QString& key : priorityKeys) {
@@ -401,7 +400,6 @@ QString TaskbarIndicator::humanizedMetricName(const QString& key) const
     if (key == QStringLiteral("disk.read.speed")) return QStringLiteral("Disk Read");
     if (key == QStringLiteral("disk.write.speed")) return QStringLiteral("Disk Write");
     if (key == QStringLiteral("battery.level.percent")) return QStringLiteral("Battery");
-    if (key == QStringLiteral("hello.plugin.status")) return QStringLiteral("Hello");
     if (key == QStringLiteral("system.device.name")) return QStringLiteral("Device");
     if (key == QStringLiteral("system.os.version")) return QStringLiteral("OS");
     if (key == QStringLiteral("system.cpu.model")) return QStringLiteral("CPU");
@@ -465,8 +463,7 @@ QStringList TaskbarIndicator::orderedMetricKeys() const
         QStringLiteral("network.download.speed"),
         QStringLiteral("disk.read.speed"),
         QStringLiteral("disk.write.speed"),
-        QStringLiteral("battery.level.percent"),
-        QStringLiteral("hello.plugin.status")
+        QStringLiteral("battery.level.percent")
     };
 
     QStringList result;

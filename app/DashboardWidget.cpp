@@ -131,7 +131,6 @@ void DashboardWidget::relayoutCards()
 QString DashboardWidget::displayTitleForMetric(const QString& key) const
 {
     if (key == QStringLiteral("framework.status")) return QStringLiteral("Framework");
-    if (key == QStringLiteral("hello.plugin.status")) return QStringLiteral("Plugin Link");
     if (key == QStringLiteral("cpu.usage.total")) return QStringLiteral("CPU");
     if (key == QStringLiteral("memory.usage.percent")) return QStringLiteral("Memory");
     if (key == QStringLiteral("network.upload.speed")) return QStringLiteral("Upload");
@@ -168,9 +167,6 @@ QString DashboardWidget::displayValueForMetric(const MetricValue& value) const
 
 QString DashboardWidget::displayHintForMetric(const MetricValue& value) const
 {
-    if (value.key == QStringLiteral("hello.plugin.status")) {
-        return QStringLiteral("Dynamic plugin contract verified");
-    }
     if (value.timestamp.isValid()) {
         return QStringLiteral("Updated %1").arg(value.timestamp.toString(QStringLiteral("hh:mm:ss")));
     }
@@ -185,7 +181,6 @@ QColor DashboardWidget::accentColorForMetric(const QString& key) const
     if (key.startsWith(QStringLiteral("disk."))) return QColor(QStringLiteral("#bf5af2"));
     if (key.startsWith(QStringLiteral("battery."))) return QColor(QStringLiteral("#ffd60a"));
     if (key.startsWith(QStringLiteral("system."))) return QColor(QStringLiteral("#64d2ff"));
-    if (key.startsWith(QStringLiteral("hello."))) return QColor(QStringLiteral("#ff9f0a"));
     return QColor(QStringLiteral("#5e5ce6"));
 }
 

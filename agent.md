@@ -1119,7 +1119,7 @@ CPU 插件示例：
 3. `PluginManager`
 4. `IPlugin`
 5. `IPanelPlugin`
-6. 一个 `HelloPlugin`
+6. 一个最小面板插件或 CPU 监控插件
 7. 主程序加载插件并显示插件页面
 
 目标：

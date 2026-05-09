@@ -44,9 +44,6 @@ NavigationIconSpec iconSpecForKey(const QString& key)
     if (key == QStringLiteral("plugins")) {
         return {QStringLiteral("P"), QColor(QStringLiteral("#5e5ce6")), Qt::white};
     }
-    if (key == QStringLiteral("hello")) {
-        return {QStringLiteral("H"), QColor(QStringLiteral("#ff9f0a")), Qt::white};
-    }
     if (key == QStringLiteral("system")) {
         return {QStringLiteral("S"), QColor(QStringLiteral("#64d2ff")), QColor(QStringLiteral("#0b2230"))};
     }

@@ -28,7 +28,7 @@ cmake --build build
 
 ```text
 build/bin/Vitals
-build/bin/plugins/libHelloPlugin.so
+build/bin/plugins/libCpuMonitorPlugin.so
 build/bin/plugins/libSystemInfoPlugin.so
 ```
 
@@ -108,16 +108,16 @@ docs/
 
 同时预留了图表、仪表盘、表格、小型曲线组件的类型入口，后续可逐步补齐实现。
 
-### 6. 示例插件
+### 6. 监控插件
 
-已完成 `HelloPlugin`：
+已完成 `CpuMonitorPlugin` 与 `SystemInfoPlugin`：
 
 - 作为动态插件构建。
-- 实现 `IPlugin` 和 `IPanelPlugin`。
-- 提供独立 QWidget 页面。
-- 启动时发布 `hello.plugin.status` 指标。
-- 插件元信息位于 `plugins/hello/hello_plugin.json`。
-- 通过 `supportedPlatforms` 声明支持 Windows、macOS、Linux。
+- 实现监控插件、面板插件和任务栏显示能力。
+- CPU 插件发布总使用率、每核使用率、逻辑核心数等指标。
+- SystemInfo 插件发布设备、系统、硬件和运行时长等指标。
+- 插件元信息分别位于 `plugins/cpu/cpu_plugin.json` 和 `plugins/systeminfo/systeminfo_plugin.json`。
+- 当前已实现平台通过 `supportedPlatforms` 明确声明。
 
 插件输出目录已统一为：
 
@@ -164,7 +164,7 @@ build/bin/plugins/
 
 ### 插件
 
-- `HelloPlugin` 已验证最小插件加载链路。
+- `CpuMonitorPlugin` 已验证监控插件加载链路。
 - `SystemInfoPlugin` 已完成 macOS 首版。
 - `SystemInfoPlugin` 同时验证了“监控插件 + 面板插件”双能力模式。
 
@@ -172,7 +172,7 @@ build/bin/plugins/
 
 ### 第一阶段补强：框架跑通与工程稳定
 
-- 启动 GUI，确认主程序可以实际加载 `HelloPlugin` 和 `SystemInfoPlugin` 并正确显示页面。
+- 启动 GUI，确认主程序可以实际加载 `CpuMonitorPlugin` 和 `SystemInfoPlugin` 并正确显示页面。
 - 在 Windows、macOS、Linux 分别验证任务栏 / 托盘 / 菜单栏显示行为。
 - 增加基础自动化测试或最小 smoke test，避免后续改动破坏插件加载链路。
 - 为插件加载失败增加更完整的错误展示页面。
