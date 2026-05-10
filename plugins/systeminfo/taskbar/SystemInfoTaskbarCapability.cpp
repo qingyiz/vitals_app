@@ -2,6 +2,8 @@
 
 #include "monitor/SystemInfoMonitorCapability.h"
 
+#include <QStringList>
+
 namespace Vitals {
 
 namespace {

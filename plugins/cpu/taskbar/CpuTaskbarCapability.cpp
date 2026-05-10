@@ -2,6 +2,7 @@
 
 #include "monitor/CpuMonitorCapability.h"
 
+#include <QStringList>
 #include <QtGlobal>
 
 namespace Vitals {

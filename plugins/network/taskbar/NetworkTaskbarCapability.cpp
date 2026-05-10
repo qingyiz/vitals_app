@@ -2,6 +2,7 @@
 
 #include "monitor/NetworkMonitorCapability.h"
 
+#include <QStringList>
 #include <QtGlobal>
 
 namespace Vitals {
