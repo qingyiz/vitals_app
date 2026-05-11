@@ -34,11 +34,6 @@ if(APPLE)
             platform/taskbar/MacTaskbarIndicator.h
             platform/taskbar/MacTaskbarIndicator.mm
     )
-else()
-    target_sources(VitalsApp
-        PRIVATE
-            platform/taskbar/MacTaskbarIndicator.h
-    )
 endif()
 
 set_target_properties(VitalsApp PROPERTIES
