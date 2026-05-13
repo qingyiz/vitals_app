@@ -7,6 +7,7 @@
 #include <QApplication>
 #include <QColor>
 #include <QDebug>
+#include <QFontDatabase>
 #include <QFontMetrics>
 #include <QMenu>
 #include <QPalette>
@@ -95,13 +96,32 @@ QList<QStringList> candidateLayouts(const QString& label)
 TextLayout bestTextLayout(const QString& label)
 {
     const bool hasExplicitMultiline = label.contains(QLatin1Char('\n'));
-    const int kMaxWidth = hasExplicitMultiline ? 72 : 40;
+    const int kMaxWidth = hasExplicitMultiline ? 48 : 40;
     constexpr int kMinWidth = 22;
     const int kMaxHeight = hasExplicitMultiline ? 26 : 22;
     constexpr int kHorizontalPadding = 4;
 
     TextLayout best;
     best.lines = QStringList{normalizedLabel(label)};
+
+    if (hasExplicitMultiline) {
+        QStringList lines;
+        const QStringList explicitLines = label.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+        for (const QString& line : explicitLines) {
+            if (!line.trimmed().isEmpty()) {
+                lines.append(line.trimmed());
+            }
+            if (lines.size() == 2) {
+                break;
+            }
+        }
+
+        best.lines = lines.isEmpty() ? QStringList{normalizedLabel(label)} : lines;
+        best.fontPixelSize = 9;
+        best.width = kMaxWidth;
+        best.height = kMaxHeight;
+        return best;
+    }
 
     const QList<QStringList> candidates = candidateLayouts(label);
     for (const QStringList& candidateLines : candidates) {
@@ -559,7 +579,11 @@ QPixmap TaskbarIndicator::buildPixmap(const QString& label) const
         const int height = layout.height;
 
         QFont font = QApplication::font();
+        if (hasExplicitMultiline) {
+            font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+        }
         font.setWeight(QFont::DemiBold);
+        font.setFixedPitch(hasExplicitMultiline);
         font.setPixelSize(layout.fontPixelSize);
         QFontMetrics metrics(font);
 
@@ -578,18 +602,22 @@ QPixmap TaskbarIndicator::buildPixmap(const QString& label) const
         const int totalTextHeight = layout.lines.size() * lineHeight;
         const qreal startY = (height - totalTextHeight) / 2.0;
         const Qt::Alignment lineAlignment = hasExplicitMultiline
-            ? static_cast<Qt::Alignment>(Qt::AlignLeft | Qt::AlignVCenter)
+            ? static_cast<Qt::Alignment>(Qt::AlignRight | Qt::AlignVCenter)
             : Qt::AlignCenter;
-        const qreal leftPadding = hasExplicitMultiline ? 3.0 : 0.0;
+        const qreal horizontalPadding = hasExplicitMultiline ? 1.0 : 0.0;
 
         for (int index = 0; index < layout.lines.size(); ++index) {
-            const QRectF lineRect(leftPadding, startY + index * lineHeight, width - leftPadding, lineHeight);
+            const QRectF lineRect(horizontalPadding,
+                startY + index * lineHeight,
+                width - horizontalPadding * 2.0,
+                lineHeight);
+            const QString line = layout.lines.at(index);
             if (!useSystemTint) {
                 painter.setPen(preferredTextHaloColor(textColor));
-                painter.drawText(lineRect.translated(0.0, 0.5), lineAlignment, layout.lines.at(index));
+                painter.drawText(lineRect.translated(0.0, 0.5), lineAlignment, line);
             }
             painter.setPen(textColor);
-            painter.drawText(lineRect, lineAlignment, layout.lines.at(index));
+            painter.drawText(lineRect, lineAlignment, line);
         }
         return pixmap;
     }

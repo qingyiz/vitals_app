@@ -25,6 +25,23 @@ QString formatCompactRate(double bytesPerSecond)
         .arg(QString::fromLatin1(units[unitIndex]));
 }
 
+QString formatMenuBarRate(double bytesPerSecond)
+{
+    static const char* units[] = {"B/s", "KB/s", "MB/s", "GB/s"};
+
+    double value = qMax(0.0, bytesPerSecond);
+    int unitIndex = 0;
+    while (value >= 1024.0 && unitIndex < 3) {
+        value /= 1024.0;
+        ++unitIndex;
+    }
+
+    const int precision = (unitIndex == 0 || value >= 10.0) ? 0 : 1;
+    return QStringLiteral("%1 %2")
+        .arg(value, 0, 'f', precision)
+        .arg(QString::fromLatin1(units[unitIndex]));
+}
+
 QString formatCompactBytes(quint64 bytes)
 {
     static const char* units[] = {"B", "KB", "MB", "GB", "TB"};
@@ -56,9 +73,9 @@ QString NetworkTaskbarCapability::displayText(const QHash<QString, MetricValue>&
         return QString();
     }
 
-    return QStringLiteral("↑：%1\n↓：%2")
-        .arg(formatCompactRate(uploadValue.value.toDouble()))
-        .arg(formatCompactRate(downloadValue.value.toDouble()));
+    return QStringLiteral("%1\n%2")
+        .arg(formatMenuBarRate(uploadValue.value.toDouble()))
+        .arg(formatMenuBarRate(downloadValue.value.toDouble()));
 }
 
 QString NetworkTaskbarCapability::tooltip(const QHash<QString, MetricValue>& latestValues) const
