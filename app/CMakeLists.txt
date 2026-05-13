@@ -12,6 +12,7 @@ add_executable(VitalsApp
     PluginCenterWidget.cpp
     ToggleSwitch.h
     ToggleSwitch.cpp
+    resources.qrc
     platform/taskbar/TaskbarIndicator.h
     platform/taskbar/TaskbarIndicator.cpp
     platform/taskbar/TaskbarMenuDetailWidget.h

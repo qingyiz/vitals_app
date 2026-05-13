@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title>Vitals app icon</title>
+  <desc>A modular plugin hub icon for the Vitals desktop system monitor.</desc>
+  <defs>
+    <linearGradient id="base" x1="138" y1="104" x2="886" y2="920" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#26394b"/>
+      <stop offset="0.46" stop-color="#121c25"/>
+      <stop offset="1" stop-color="#0a1016"/>
+    </linearGradient>
+    <radialGradient id="freeGlow" cx="330" cy="190" r="720" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#64d8ff" stop-opacity="0.42"/>
+      <stop offset="0.42" stop-color="#6fffa8" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#6fffa8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="core" x1="362" y1="318" x2="662" y2="706" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2f556c"/>
+      <stop offset="1" stop-color="#15222d"/>
+    </linearGradient>
+    <linearGradient id="moduleA" x1="246" y1="230" x2="382" y2="392" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#47d7ff"/>
+      <stop offset="1" stop-color="#2478ff"/>
+    </linearGradient>
+    <linearGradient id="moduleB" x1="642" y1="230" x2="778" y2="392" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7cffb2"/>
+      <stop offset="1" stop-color="#26c96f"/>
+    </linearGradient>
+    <linearGradient id="moduleC" x1="246" y1="632" x2="382" y2="794" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffd166"/>
+      <stop offset="1" stop-color="#ff8a3d"/>
+    </linearGradient>
+    <linearGradient id="moduleD" x1="642" y1="632" x2="778" y2="794" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#b5a7ff"/>
+      <stop offset="1" stop-color="#7c5cff"/>
+    </linearGradient>
+    <filter id="shadow" x="-15%" y="-15%" width="130%" height="135%">
+      <feDropShadow dx="0" dy="28" stdDeviation="34" flood-color="#000000" flood-opacity="0.38"/>
+    </filter>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.25 0 0 0 0 0.92 0 0 0 0 0.86 0 0 0 0.55 0" result="colored"/>
+      <feMerge>
+        <feMergeNode in="colored"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="clip">
+      <rect x="88" y="88" width="848" height="848" rx="210"/>
+    </clipPath>
+  </defs>
+
+  <rect x="88" y="88" width="848" height="848" rx="210" fill="url(#base)"/>
+  <g clip-path="url(#clip)">
+    <rect x="88" y="88" width="848" height="848" fill="url(#freeGlow)"/>
+    <path d="M102 298C232 178 420 134 605 172C766 205 891 288 956 410V88H88V334C92 322 97 310 102 298Z" fill="#ffffff" opacity="0.08"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <path d="M512 222C672 222 802 352 802 512C802 672 672 802 512 802C352 802 222 672 222 512C222 352 352 222 512 222Z" fill="none" stroke="#93b8c9" stroke-width="8" stroke-dasharray="18 26" stroke-linecap="round" opacity="0.34"/>
+    <path d="M332 336L438 442" stroke="#9adff2" stroke-width="18" stroke-linecap="round" opacity="0.42"/>
+    <path d="M692 336L586 442" stroke="#a8f5c9" stroke-width="18" stroke-linecap="round" opacity="0.42"/>
+    <path d="M332 688L438 582" stroke="#ffd88a" stroke-width="18" stroke-linecap="round" opacity="0.42"/>
+    <path d="M692 688L586 582" stroke="#c5bcff" stroke-width="18" stroke-linecap="round" opacity="0.42"/>
+
+    <rect x="362" y="362" width="300" height="300" rx="86" fill="url(#core)" stroke="#d5f7ff" stroke-opacity="0.16" stroke-width="6"/>
+    <path d="M440 473L491 586L585 438" fill="none" stroke="#62ffb1" stroke-width="42" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+    <path d="M440 473L491 586L585 438" fill="none" stroke="#ffffff" stroke-opacity="0.42" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="220" y="220" width="152" height="152" rx="44" fill="url(#moduleA)"/>
+    <rect x="652" y="220" width="152" height="152" rx="44" fill="url(#moduleB)"/>
+    <rect x="220" y="652" width="152" height="152" rx="44" fill="url(#moduleC)"/>
+    <rect x="652" y="652" width="152" height="152" rx="44" fill="url(#moduleD)"/>
+  </g>
+
+  <g fill="#0c1620" opacity="0.9">
+    <circle cx="296" cy="296" r="20"/>
+    <circle cx="728" cy="296" r="20"/>
+    <circle cx="296" cy="728" r="20"/>
+    <circle cx="728" cy="728" r="20"/>
+  </g>
+
+  <g fill="none" stroke="#ffffff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" opacity="0.88">
+    <path d="M267 296H325"/>
+    <path d="M728 267V325"/>
+    <path d="M267 728H325M296 699V757"/>
+    <path d="M704 728H752"/>
+  </g>
+
+  <g fill="#dff8ff" opacity="0.78">
+    <circle cx="512" cy="274" r="14"/>
+    <circle cx="750" cy="512" r="14"/>
+    <circle cx="512" cy="750" r="14"/>
+    <circle cx="274" cy="512" r="14"/>
+  </g>
+
+  <rect x="88" y="88" width="848" height="848" rx="210" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="8"/>
+</svg>
