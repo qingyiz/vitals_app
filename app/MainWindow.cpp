@@ -23,6 +23,7 @@
 #include <QLabel>
 #include <QPainter>
 #include <QPixmap>
+#include <QSizePolicy>
 #include <QStackedWidget>
 #include <QStatusBar>
 #include <QVBoxLayout>
@@ -125,6 +126,8 @@ void MainWindow::setupUi()
 
     m_navigation = new NavigationWidget(central);
     m_pages = new QStackedWidget(central);
+    m_pages->setMinimumSize(0, 0);
+    m_pages->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
 
     layout->addWidget(m_navigation);
     layout->addWidget(m_pages, 1);

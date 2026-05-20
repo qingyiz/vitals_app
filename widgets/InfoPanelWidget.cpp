@@ -28,6 +28,11 @@ QLabel* createSelectableLabel(QWidget* parent, const QString& objectName)
 InfoPanelWidget::InfoPanelWidget(QWidget* parent)
     : QWidget(parent)
 {
+    setMinimumSize(680, 620);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+
+    // The panel is composed of three coordinated zones:
+    // top page header, hero/details row, and the lower dense tile grid.
     auto* rootLayout = new QVBoxLayout(this);
     rootLayout->setContentsMargins(0, 0, 0, 0);
 
@@ -57,6 +62,8 @@ InfoPanelWidget::InfoPanelWidget(QWidget* parent)
     // The left column is the hero summary block for the primary object.
     auto* heroPanel = new QFrame(content);
     heroPanel->setObjectName(QStringLiteral("systemHeroPanel"));
+    heroPanel->setMinimumSize(310, 168);
+    heroPanel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     auto* heroLayout = new QVBoxLayout(heroPanel);
     heroLayout->setContentsMargins(16, 14, 16, 14);
     heroLayout->setSpacing(6);
@@ -93,6 +100,8 @@ InfoPanelWidget::InfoPanelWidget(QWidget* parent)
     // The right column is a dense key-value snapshot for quick scanning.
     auto* detailsPanel = new QFrame(content);
     detailsPanel->setObjectName(QStringLiteral("systemDetailsPanel"));
+    detailsPanel->setMinimumSize(310, 168);
+    detailsPanel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     auto* detailsLayout = new QVBoxLayout(detailsPanel);
     detailsLayout->setContentsMargins(16, 14, 16, 14);
     detailsLayout->setSpacing(8);
@@ -111,6 +120,8 @@ InfoPanelWidget::InfoPanelWidget(QWidget* parent)
 
     // The lower grid hosts repeatable compact tiles that plugins can swap freely.
     auto* tilesContainer = new QWidget(content);
+    tilesContainer->setMinimumWidth(640);
+    tilesContainer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     m_tilesLayout = new QGridLayout(tilesContainer);
     m_tilesLayout->setContentsMargins(0, 0, 0, 0);
     m_tilesLayout->setHorizontalSpacing(12);
@@ -196,9 +207,11 @@ QWidget* InfoPanelWidget::createBadge(const InfoBadgeData& badge)
 
     auto* label = new QLabel(badge.label, frame);
     label->setObjectName(QStringLiteral("systemBadgeLabel"));
+    label->setMinimumWidth(0);
 
     auto* value = new QLabel(badge.value, frame);
     value->setObjectName(QStringLiteral("systemBadgeValue"));
+    value->setMinimumWidth(0);
     value->setWordWrap(true);
 
     layout->addWidget(label);
@@ -231,7 +244,8 @@ QWidget* InfoPanelWidget::createTile(const InfoTileData& tile)
     auto* frame = new QFrame(this);
     frame->setObjectName(QStringLiteral("systemInfoTile"));
     frame->setMinimumHeight(76);
-    frame->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    frame->setMinimumWidth(300);
+    frame->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     auto* layout = new QVBoxLayout(frame);
     layout->setContentsMargins(12, 9, 12, 9);

@@ -3,6 +3,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QProgressBar>
+#include <QSizePolicy>
 #include <QVBoxLayout>
 
 namespace Vitals {
@@ -13,6 +14,8 @@ CardWidget::CardWidget(const QString& title, QWidget* parent)
     setFrameShape(QFrame::StyledPanel);
     setObjectName(QStringLiteral("metricCard"));
     setMinimumHeight(82);
+    setMinimumWidth(260);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     auto* outerLayout = new QHBoxLayout(this);
     outerLayout->setContentsMargins(0, 0, 0, 0);
@@ -28,13 +31,21 @@ CardWidget::CardWidget(const QString& title, QWidget* parent)
 
     m_titleLabel = new QLabel(title, this);
     m_titleLabel->setObjectName(QStringLiteral("cardTitle"));
+    m_titleLabel->setMinimumWidth(0);
+    m_titleLabel->setWordWrap(true);
+    m_titleLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
 
     m_valueLabel = new QLabel(QStringLiteral("--"), this);
     m_valueLabel->setObjectName(QStringLiteral("cardValue"));
+    m_valueLabel->setMinimumWidth(0);
+    m_valueLabel->setWordWrap(true);
+    m_valueLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
 
     m_hintLabel = new QLabel(this);
     m_hintLabel->setObjectName(QStringLiteral("cardHint"));
+    m_hintLabel->setMinimumWidth(0);
     m_hintLabel->setWordWrap(true);
+    m_hintLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
 
     m_progressBar = new QProgressBar(this);
     m_progressBar->setObjectName(QStringLiteral("cardProgress"));
@@ -55,11 +66,13 @@ CardWidget::CardWidget(const QString& title, QWidget* parent)
 void CardWidget::setValueText(const QString& value)
 {
     m_valueLabel->setText(value);
+    m_valueLabel->setToolTip(value);
 }
 
 void CardWidget::setHintText(const QString& hint)
 {
     m_hintLabel->setText(hint);
+    m_hintLabel->setToolTip(hint);
 }
 
 void CardWidget::setAccentColor(const QColor& color)
