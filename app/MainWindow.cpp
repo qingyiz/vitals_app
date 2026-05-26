@@ -67,6 +67,20 @@ NavigationIconSpec iconSpecForKey(const QString& key)
     return {key.left(1).toUpper(), QColor(QStringLiteral("#8e8e93")), Qt::white};
 }
 
+QString navigationTitleForPage(const QString& id, const QString& title)
+{
+    if (id == QStringLiteral("cpu")) {
+        return QStringLiteral("CPU");
+    }
+    if (id == QStringLiteral("memory")) {
+        return QStringLiteral("Memory");
+    }
+    if (id == QStringLiteral("network")) {
+        return QStringLiteral("Network");
+    }
+    return title;
+}
+
 } // namespace
 
 MainWindow::MainWindow(QWidget* parent)
@@ -293,7 +307,7 @@ void MainWindow::rebuildPages(const QString& preferredPageId)
         const QIcon icon = panelCapability ? panelCapability->panelIcon() : panelPlugin->panelIcon();
         const QString iconKey = panelCapability ? panelCapability->panelIconKey() : panelPlugin->panelIconKey();
         QWidget* page = panelCapability ? panelCapability->createPanel(this) : panelPlugin->createPanel(this);
-        addPage(panelId, panelName, page,
+        addPage(panelId, navigationTitleForPage(panelId, panelName), page,
             icon.isNull() ? createNavigationIcon(iconKey) : icon);
     }
 
@@ -324,12 +338,12 @@ void MainWindow::applyStyle()
             background: #ececf1;
             color: #34343a;
             border: none;
-            padding: 16px 12px;
-            font-size: 14px;
+            padding: 12px 10px;
+            font-size: 13px;
         }
         QListWidget#navigation::item {
             border-radius: 6px;
-            padding: 9px 11px;
+            padding: 7px 9px;
             margin: 1px 0;
         }
         QListWidget#navigation::item:selected {
@@ -339,7 +353,7 @@ void MainWindow::applyStyle()
         }
         QLabel#pageTitle {
             color: #1d252d;
-            font-size: 26px;
+            font-size: 22px;
             font-weight: 700;
         }
         QLabel#pageSubtitle {
@@ -351,9 +365,9 @@ void MainWindow::applyStyle()
             background: rgba(50, 215, 75, 0.14);
             color: #248a3d;
             border: 1px solid rgba(50, 215, 75, 0.28);
-            border-radius: 10px;
-            padding: 4px 10px;
-            font-size: 12px;
+            border-radius: 9px;
+            padding: 3px 9px;
+            font-size: 11px;
             font-weight: 600;
         }
         QFrame#metricCard {
@@ -363,12 +377,12 @@ void MainWindow::applyStyle()
         }
         QLabel#cardTitle {
             color: #6e6e73;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
         }
         QLabel#cardValue {
             color: #1d1d1f;
-            font-size: 25px;
+            font-size: 21px;
             font-weight: 700;
         }
         QLabel#cardHint {
@@ -389,7 +403,7 @@ void MainWindow::applyStyle()
                 stop:0 rgba(255,255,255,0.98),
                 stop:1 rgba(246,247,250,0.98));
             border: 1px solid #d8dbe1;
-            border-radius: 18px;
+            border-radius: 12px;
         }
         QLabel#systemHeroEyebrow {
             color: #8e8e93;
@@ -399,7 +413,7 @@ void MainWindow::applyStyle()
         }
         QLabel#systemHeroTitle {
             color: #101114;
-            font-size: 32px;
+            font-size: 26px;
             font-weight: 800;
         }
         QLabel#systemHeroSubtitle {
@@ -414,7 +428,7 @@ void MainWindow::applyStyle()
         QFrame#systemBadge {
             background: rgba(248,249,251,0.92);
             border: 1px solid #dde0e6;
-            border-radius: 12px;
+            border-radius: 9px;
         }
         QLabel#systemBadgeLabel {
             color: #8e8e93;
@@ -424,13 +438,13 @@ void MainWindow::applyStyle()
         }
         QLabel#systemBadgeValue {
             color: #1d1d1f;
-            font-size: 17px;
+            font-size: 15px;
             font-weight: 700;
         }
         QFrame#systemDetailsPanel {
             background: rgba(255, 255, 255, 0.90);
             border: 1px solid #dde0e6;
-            border-radius: 18px;
+            border-radius: 12px;
         }
         QLabel#systemSectionTitle {
             color: #1d1d1f;
@@ -451,7 +465,7 @@ void MainWindow::applyStyle()
         QFrame#systemInfoTile {
             background: rgba(255, 255, 255, 0.94);
             border: 1px solid #dde0e6;
-            border-radius: 14px;
+            border-radius: 10px;
         }
         QLabel#systemInfoTileEyebrow {
             color: #8e8e93;
@@ -460,7 +474,7 @@ void MainWindow::applyStyle()
         }
         QLabel#systemInfoTileValue {
             color: #1d1d1f;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 700;
         }
         QLabel#panelTitle {

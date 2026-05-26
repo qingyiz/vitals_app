@@ -25,6 +25,16 @@ NSString* nsStringFromQString(const QString& value)
     return [NSString stringWithUTF8String:value.toUtf8().constData()];
 }
 
+NSString* autosaveNameForDisplay(const TaskbarPluginDisplay& display)
+{
+    QString stableId = display.pluginId.trimmed();
+    if (stableId.isEmpty()) {
+        stableId = display.pluginName.trimmed();
+    }
+
+    return nsStringFromQString(QStringLiteral("com.vitals.menubar.%1").arg(stableId));
+}
+
 NSImage* nsImageFromQPixmap(const QPixmap& pixmap, bool isTemplate)
 {
     if (pixmap.isNull()) {
@@ -49,6 +59,20 @@ NSImage* nsImageFromQPixmap(const QPixmap& pixmap, bool isTemplate)
         [image setSize:NSMakeSize(pixmap.width() / devicePixelRatio, pixmap.height() / devicePixelRatio)];
     }
     return image;
+}
+
+CGFloat logicalWidthFromQPixmap(const QPixmap& pixmap)
+{
+    if (pixmap.isNull()) {
+        return 0.0;
+    }
+
+    const qreal devicePixelRatio = pixmap.devicePixelRatio();
+    if (devicePixelRatio <= 0.0) {
+        return pixmap.width();
+    }
+
+    return pixmap.width() / devicePixelRatio;
 }
 
 NSColor* colorFromHex(const QString& hex, NSColor* fallback)
@@ -448,6 +472,9 @@ void MacTaskbarIndicator::refresh()
             NativeBridge::Entry entry;
             entry.pluginId = display.pluginId;
             entry.statusItem = [[[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength] retain];
+            if ([entry.statusItem respondsToSelector:@selector(setAutosaveName:)]) {
+                [entry.statusItem setAutosaveName:autosaveNameForDisplay(display)];
+            }
             entry.menu = [[NSMenu alloc] initWithTitle:nsStringFromQString(display.pluginName)];
             entry.detailItem = [[NSMenuItem alloc] initWithTitle:nsStringFromQString(display.pluginName)
                                                            action:nil
@@ -504,6 +531,7 @@ void MacTaskbarIndicator::refresh()
             [button setToolTip:nsStringFromQString(tooltip)];
             [button setImage:nsImageFromQPixmap(pixmap, prefersSystemTintedText())];
             [button setImagePosition:NSImageOnly];
+            [entry.statusItem setLength:logicalWidthFromQPixmap(pixmap) + 2.0];
 
             const TaskbarDetailContent content = detailContentForDisplay(display, values);
             [entry.detailItem setTitle:@""];

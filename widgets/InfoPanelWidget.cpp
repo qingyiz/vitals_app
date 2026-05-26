@@ -5,6 +5,8 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLayoutItem>
+#include <QScrollArea>
+#include <QSizePolicy>
 #include <QVBoxLayout>
 
 namespace Vitals {
@@ -17,6 +19,7 @@ QLabel* createSelectableLabel(QWidget* parent, const QString& objectName)
     label->setObjectName(objectName);
     label->setWordWrap(true);
     label->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     return label;
 }
 
@@ -25,37 +28,46 @@ QLabel* createSelectableLabel(QWidget* parent, const QString& objectName)
 InfoPanelWidget::InfoPanelWidget(QWidget* parent)
     : QWidget(parent)
 {
-    // The panel is composed of three coordinated zones:
-    // top page header, hero/details row, and the lower dense tile grid.
     auto* rootLayout = new QVBoxLayout(this);
-    rootLayout->setContentsMargins(28, 24, 28, 26);
-    rootLayout->setSpacing(14);
+    rootLayout->setContentsMargins(0, 0, 0, 0);
 
-    m_pageTitleLabel = new QLabel(this);
+    auto* scrollArea = new QScrollArea(this);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    auto* content = new QWidget(scrollArea);
+    auto* contentLayout = new QVBoxLayout(content);
+    contentLayout->setContentsMargins(22, 18, 22, 20);
+    contentLayout->setSpacing(10);
+
+    m_pageTitleLabel = new QLabel(content);
     m_pageTitleLabel->setObjectName(QStringLiteral("pageTitle"));
 
-    m_pageSubtitleLabel = new QLabel(this);
+    m_pageSubtitleLabel = new QLabel(content);
     m_pageSubtitleLabel->setObjectName(QStringLiteral("pageSubtitle"));
     m_pageSubtitleLabel->setWordWrap(true);
 
     auto* contentGrid = new QGridLayout();
-    contentGrid->setHorizontalSpacing(18);
-    contentGrid->setVerticalSpacing(14);
+    contentGrid->setHorizontalSpacing(12);
+    contentGrid->setVerticalSpacing(10);
     contentGrid->setColumnStretch(0, 1);
     contentGrid->setColumnStretch(1, 1);
 
     // The left column is the hero summary block for the primary object.
-    auto* heroPanel = new QFrame(this);
+    auto* heroPanel = new QFrame(content);
     heroPanel->setObjectName(QStringLiteral("systemHeroPanel"));
     auto* heroLayout = new QVBoxLayout(heroPanel);
-    heroLayout->setContentsMargins(20, 18, 20, 18);
-    heroLayout->setSpacing(8);
+    heroLayout->setContentsMargins(16, 14, 16, 14);
+    heroLayout->setSpacing(6);
 
     m_heroEyebrowLabel = new QLabel(heroPanel);
     m_heroEyebrowLabel->setObjectName(QStringLiteral("systemHeroEyebrow"));
 
     m_heroTitleLabel = new QLabel(heroPanel);
     m_heroTitleLabel->setObjectName(QStringLiteral("systemHeroTitle"));
+    m_heroTitleLabel->setWordWrap(true);
+    m_heroTitleLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
 
     m_heroSubtitleLabel = new QLabel(heroPanel);
     m_heroSubtitleLabel->setObjectName(QStringLiteral("systemHeroSubtitle"));
@@ -79,11 +91,11 @@ InfoPanelWidget::InfoPanelWidget(QWidget* parent)
     heroLayout->addStretch();
 
     // The right column is a dense key-value snapshot for quick scanning.
-    auto* detailsPanel = new QFrame(this);
+    auto* detailsPanel = new QFrame(content);
     detailsPanel->setObjectName(QStringLiteral("systemDetailsPanel"));
     auto* detailsLayout = new QVBoxLayout(detailsPanel);
-    detailsLayout->setContentsMargins(18, 16, 18, 16);
-    detailsLayout->setSpacing(10);
+    detailsLayout->setContentsMargins(16, 14, 16, 14);
+    detailsLayout->setSpacing(8);
 
     m_detailsTitleLabel = new QLabel(detailsPanel);
     m_detailsTitleLabel->setObjectName(QStringLiteral("systemSectionTitle"));
@@ -91,17 +103,18 @@ InfoPanelWidget::InfoPanelWidget(QWidget* parent)
     m_detailsRowsContainer = new QWidget(detailsPanel);
     m_detailsRowsLayout = new QVBoxLayout(m_detailsRowsContainer);
     m_detailsRowsLayout->setContentsMargins(0, 0, 0, 0);
-    m_detailsRowsLayout->setSpacing(10);
+    m_detailsRowsLayout->setSpacing(7);
 
     detailsLayout->addWidget(m_detailsTitleLabel);
     detailsLayout->addWidget(m_detailsRowsContainer);
+    detailsLayout->addStretch(1);
 
     // The lower grid hosts repeatable compact tiles that plugins can swap freely.
-    auto* tilesContainer = new QWidget(this);
+    auto* tilesContainer = new QWidget(content);
     m_tilesLayout = new QGridLayout(tilesContainer);
     m_tilesLayout->setContentsMargins(0, 0, 0, 0);
-    m_tilesLayout->setHorizontalSpacing(18);
-    m_tilesLayout->setVerticalSpacing(14);
+    m_tilesLayout->setHorizontalSpacing(12);
+    m_tilesLayout->setVerticalSpacing(10);
     m_tilesLayout->setColumnStretch(0, 1);
     m_tilesLayout->setColumnStretch(1, 1);
 
@@ -109,10 +122,13 @@ InfoPanelWidget::InfoPanelWidget(QWidget* parent)
     contentGrid->addWidget(detailsPanel, 0, 1);
     contentGrid->addWidget(tilesContainer, 1, 0, 1, 2);
 
-    rootLayout->addWidget(m_pageTitleLabel);
-    rootLayout->addWidget(m_pageSubtitleLabel);
-    rootLayout->addLayout(contentGrid);
-    rootLayout->addStretch(1);
+    contentLayout->addWidget(m_pageTitleLabel);
+    contentLayout->addWidget(m_pageSubtitleLabel);
+    contentLayout->addLayout(contentGrid);
+    contentLayout->addStretch(1);
+
+    scrollArea->setWidget(content);
+    rootLayout->addWidget(scrollArea);
 }
 
 void InfoPanelWidget::setPageTitle(const QString& title)
@@ -175,7 +191,7 @@ QWidget* InfoPanelWidget::createBadge(const InfoBadgeData& badge)
     frame->setObjectName(QStringLiteral("systemBadge"));
 
     auto* layout = new QVBoxLayout(frame);
-    layout->setContentsMargins(12, 9, 12, 9);
+    layout->setContentsMargins(10, 7, 10, 7);
     layout->setSpacing(2);
 
     auto* label = new QLabel(badge.label, frame);
@@ -183,6 +199,7 @@ QWidget* InfoPanelWidget::createBadge(const InfoBadgeData& badge)
 
     auto* value = new QLabel(badge.value, frame);
     value->setObjectName(QStringLiteral("systemBadgeValue"));
+    value->setWordWrap(true);
 
     layout->addWidget(label);
     layout->addWidget(value);
@@ -195,7 +212,7 @@ QWidget* InfoPanelWidget::createDetailRow(const InfoRowData& row)
     auto* container = new QWidget(m_detailsRowsContainer);
     auto* layout = new QHBoxLayout(container);
     layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(16);
+    layout->setSpacing(12);
 
     auto* keyLabel = new QLabel(row.key, container);
     keyLabel->setObjectName(QStringLiteral("systemInfoKeyLabel"));
@@ -213,12 +230,12 @@ QWidget* InfoPanelWidget::createTile(const InfoTileData& tile)
     // Tiles are fixed-height by default to keep the lower grid visually stable.
     auto* frame = new QFrame(this);
     frame->setObjectName(QStringLiteral("systemInfoTile"));
-    frame->setMinimumHeight(112);
+    frame->setMinimumHeight(76);
     frame->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
     auto* layout = new QVBoxLayout(frame);
-    layout->setContentsMargins(14, 11, 14, 11);
-    layout->setSpacing(4);
+    layout->setContentsMargins(12, 9, 12, 9);
+    layout->setSpacing(3);
 
     auto* eyebrow = new QLabel(tile.eyebrow, frame);
     eyebrow->setObjectName(QStringLiteral("systemInfoTileEyebrow"));

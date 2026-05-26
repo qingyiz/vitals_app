@@ -13,7 +13,8 @@ int main(int argc, char* argv[])
 
     Vitals::MainWindow window;
     window.setWindowIcon(QApplication::windowIcon());
-    window.resize(1100, 720);
+    window.setMinimumSize(760, 500);
+    window.resize(900, 620);
     window.show();
 
     return app.exec();

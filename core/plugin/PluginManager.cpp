@@ -12,7 +12,27 @@
 #include <QJsonValue>
 #include <QPluginLoader>
 
+#include <algorithm>
+
 namespace Vitals {
+
+namespace {
+
+int pluginDisplayPriority(const PluginMetaInfo& metaInfo)
+{
+    const QString id = metaInfo.id.toLower();
+    if (id == QStringLiteral("com.vitals.systeminfo")) return 10;
+    if (id == QStringLiteral("com.vitals.cpu")) return 20;
+    if (id == QStringLiteral("com.vitals.memory")) return 30;
+    if (id == QStringLiteral("com.vitals.gpu")) return 40;
+    if (id == QStringLiteral("com.vitals.network")) return 50;
+    if (id == QStringLiteral("com.vitals.disk")) return 60;
+    if (id == QStringLiteral("com.vitals.battery")) return 70;
+    if (id == QStringLiteral("com.vitals.process")) return 80;
+    return 1000;
+}
+
+} // namespace
 
 PluginManager::PluginManager(QObject* parent)
     : QObject(parent)
@@ -34,12 +54,26 @@ void PluginManager::loadAllPlugins(const QString& pluginsDir, IAppContext* conte
         return;
     }
 
-    const auto files = dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot);
-    for (const QFileInfo& fileInfo : files) {
-        if (!isPluginFile(fileInfo.fileName())) {
-            continue;
+    auto files = dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot);
+    files.erase(std::remove_if(files.begin(), files.end(), [](const QFileInfo& fileInfo) {
+        return !PluginManager::isPluginFile(fileInfo.fileName());
+    }), files.end());
+
+    std::sort(files.begin(), files.end(), [](const QFileInfo& left, const QFileInfo& right) {
+        const PluginMetaInfo leftMeta = PluginManager::metaInfoFromLoader(QPluginLoader(left.absoluteFilePath()));
+        const PluginMetaInfo rightMeta = PluginManager::metaInfoFromLoader(QPluginLoader(right.absoluteFilePath()));
+        const int leftPriority = pluginDisplayPriority(leftMeta);
+        const int rightPriority = pluginDisplayPriority(rightMeta);
+        if (leftPriority != rightPriority) {
+            return leftPriority < rightPriority;
         }
 
+        const QString leftName = leftMeta.name.isEmpty() ? left.fileName() : leftMeta.name;
+        const QString rightName = rightMeta.name.isEmpty() ? right.fileName() : rightMeta.name;
+        return QString::localeAwareCompare(leftName, rightName) < 0;
+    });
+
+    for (const QFileInfo& fileInfo : files) {
         const QString filePath = fileInfo.absoluteFilePath();
         auto loader = QSharedPointer<QPluginLoader>::create(filePath);
         PluginRuntimeInfo runtimeInfo;

@@ -6,9 +6,9 @@ NavigationWidget::NavigationWidget(QWidget* parent)
     : QListWidget(parent)
 {
     setObjectName(QStringLiteral("navigation"));
-    setFixedWidth(216);
-    setSpacing(3);
-    setIconSize(QSize(18, 18));
+    setFixedWidth(172);
+    setSpacing(2);
+    setIconSize(QSize(16, 16));
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 }
 

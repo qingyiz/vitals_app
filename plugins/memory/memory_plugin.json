@@ -1,0 +1,11 @@
+{
+  "id": "com.vitals.memory",
+  "name": "Memory Monitor",
+  "description": "Live physical memory usage monitor plugin for macOS",
+  "version": "0.1.0",
+  "author": "Vitals",
+  "category": "monitor",
+  "supportsTaskbarDisplay": true,
+  "supportedPlatforms": ["macos"],
+  "requiredHostVersion": "0.1.0"
+}

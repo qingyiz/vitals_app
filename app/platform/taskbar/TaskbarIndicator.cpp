@@ -105,6 +105,7 @@ TextLayout bestTextLayout(const QString& label)
     best.lines = QStringList{normalizedLabel(label)};
 
     if (hasExplicitMultiline) {
+        constexpr int kExplicitHorizontalPadding = 1;
         QStringList lines;
         const QStringList explicitLines = label.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
         for (const QString& line : explicitLines) {
@@ -118,7 +119,18 @@ TextLayout bestTextLayout(const QString& label)
 
         best.lines = lines.isEmpty() ? QStringList{normalizedLabel(label)} : lines;
         best.fontPixelSize = 9;
-        best.width = kMaxWidth;
+        QFont font = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+        font.setWeight(QFont::DemiBold);
+        font.setFixedPitch(true);
+        font.setPixelSize(best.fontPixelSize);
+        QFontMetrics metrics(font);
+
+        int widestLine = 0;
+        for (const QString& line : best.lines) {
+            widestLine = qMax(widestLine, metrics.horizontalAdvance(line));
+        }
+
+        best.width = qBound(kMinWidth, widestLine + kExplicitHorizontalPadding * 2, kMaxWidth);
         best.height = kMaxHeight;
         return best;
     }
