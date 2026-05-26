@@ -305,6 +305,7 @@ void DashboardWidget::updateMetricCard(CardWidget* card, const MetricValue& valu
 QString DashboardWidget::pluginTitle(const QString& pluginId) const
 {
     if (pluginId == QStringLiteral("com.vitals.cpu")) return QStringLiteral("CPU Monitor");
+    if (pluginId == QStringLiteral("com.vitals.memory")) return QStringLiteral("Memory Monitor");
     if (pluginId == QStringLiteral("com.vitals.network")) return QStringLiteral("Network Monitor");
     if (pluginId == QStringLiteral("com.vitals.systeminfo")) return QStringLiteral("System Info");
     return pluginId;
@@ -313,6 +314,7 @@ QString DashboardWidget::pluginTitle(const QString& pluginId) const
 QString DashboardWidget::primaryMetricKeyForPlugin(const QString& pluginId) const
 {
     if (pluginId == QStringLiteral("com.vitals.cpu")) return QStringLiteral("cpu.usage.total");
+    if (pluginId == QStringLiteral("com.vitals.memory")) return QStringLiteral("memory.usage.percent");
     if (pluginId == QStringLiteral("com.vitals.network")) return QStringLiteral("network.download.rate");
     if (pluginId == QStringLiteral("com.vitals.systeminfo")) return QStringLiteral("system.memory.total.bytes");
     return {};
@@ -359,6 +361,14 @@ QString DashboardWidget::summaryHintForPlugin(const QString& pluginId) const
         }
     }
 
+    if (pluginId == QStringLiteral("com.vitals.memory")) {
+        const quint64 used = pluginValues.value(QStringLiteral("memory.used.bytes")).value.toULongLong();
+        const quint64 total = pluginValues.value(QStringLiteral("memory.total.bytes")).value.toULongLong();
+        if (total > 0) {
+            return QStringLiteral("%1 of %2 used").arg(formatBytes(used), formatBytes(total));
+        }
+    }
+
     const auto values = pluginValues.values();
     if (!values.isEmpty()) {
         return displayHintForMetric(values.first());
@@ -381,6 +391,9 @@ QString DashboardWidget::displayTitleForMetric(const QString& key) const
         }
     }
     if (key == QStringLiteral("memory.usage.percent")) return QStringLiteral("Memory");
+    if (key == QStringLiteral("memory.total.bytes")) return QStringLiteral("Total Memory");
+    if (key == QStringLiteral("memory.used.bytes")) return QStringLiteral("Used Memory");
+    if (key == QStringLiteral("memory.free.bytes")) return QStringLiteral("Available Memory");
     if (key == QStringLiteral("network.interface.primary")) return QStringLiteral("Primary Interface");
     if (key == QStringLiteral("network.interfaces.active")) return QStringLiteral("Active Interfaces");
     if (key == QStringLiteral("network.upload.speed")) return QStringLiteral("Upload");
