@@ -15,7 +15,7 @@ ToggleSwitch::ToggleSwitch(QWidget* parent)
 
 QSize ToggleSwitch::sizeHint() const
 {
-    return {42, 24};
+    return {36, 20};
 }
 
 void ToggleSwitch::paintEvent(QPaintEvent* event)

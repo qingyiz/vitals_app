@@ -9,6 +9,8 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLayoutItem>
+#include <QScrollArea>
+#include <QSizePolicy>
 #include <QVBoxLayout>
 
 namespace Vitals {
@@ -21,6 +23,7 @@ QLabel* createBodyLabel(const QString& text, const QString& objectName, QWidget*
     label->setObjectName(objectName);
     label->setWordWrap(true);
     label->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    label->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     return label;
 }
 
@@ -31,8 +34,8 @@ PluginCenterWidget::PluginCenterWidget(ConfigManager* configManager, QWidget* pa
     , m_configManager(configManager)
 {
     auto* rootLayout = new QVBoxLayout(this);
-    rootLayout->setContentsMargins(28, 24, 28, 28);
-    rootLayout->setSpacing(14);
+    rootLayout->setContentsMargins(22, 18, 22, 20);
+    rootLayout->setSpacing(10);
 
     auto* title = new QLabel(QStringLiteral("Plugins"), this);
     title->setObjectName(QStringLiteral("pageTitle"));
@@ -41,15 +44,21 @@ PluginCenterWidget::PluginCenterWidget(ConfigManager* configManager, QWidget* pa
     m_summaryLabel->setObjectName(QStringLiteral("pageSubtitle"));
     m_summaryLabel->setWordWrap(true);
 
-    auto* cardsContainer = new QWidget(this);
+    auto* scrollArea = new QScrollArea(this);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
+    auto* cardsContainer = new QWidget(scrollArea);
     m_cardsLayout = new QVBoxLayout(cardsContainer);
     m_cardsLayout->setContentsMargins(0, 0, 0, 0);
-    m_cardsLayout->setSpacing(12);
+    m_cardsLayout->setSpacing(8);
+    m_cardsLayout->setAlignment(Qt::AlignTop);
 
     rootLayout->addWidget(title);
     rootLayout->addWidget(m_summaryLabel);
-    rootLayout->addWidget(cardsContainer);
-    rootLayout->addStretch();
+    scrollArea->setWidget(cardsContainer);
+    rootLayout->addWidget(scrollArea, 1);
 }
 
 void PluginCenterWidget::setPluginInfos(const QList<PluginRuntimeInfo>& pluginInfos)
@@ -95,8 +104,8 @@ QWidget* PluginCenterWidget::createPluginCard(const PluginRuntimeInfo& pluginInf
     card->setObjectName(QStringLiteral("emptyPanel"));
 
     auto* layout = new QVBoxLayout(card);
-    layout->setContentsMargins(18, 16, 18, 16);
-    layout->setSpacing(10);
+    layout->setContentsMargins(14, 11, 14, 12);
+    layout->setSpacing(7);
 
     auto* header = new QHBoxLayout();
     header->setSpacing(10);
@@ -107,11 +116,12 @@ QWidget* PluginCenterWidget::createPluginCard(const PluginRuntimeInfo& pluginInf
 
     auto* title = new QLabel(pluginName, card);
     title->setObjectName(QStringLiteral("panelTitle"));
+    title->setWordWrap(true);
 
     auto* toggleContainer = new QWidget(card);
     auto* toggleLayout = new QHBoxLayout(toggleContainer);
     toggleLayout->setContentsMargins(0, 0, 0, 0);
-    toggleLayout->setSpacing(12);
+    toggleLayout->setSpacing(8);
 
     auto* enabledLabel = new QLabel(QStringLiteral("Enabled"), card);
     enabledLabel->setObjectName(QStringLiteral("panelBody"));
@@ -132,7 +142,7 @@ QWidget* PluginCenterWidget::createPluginCard(const PluginRuntimeInfo& pluginInf
         connect(taskbarSwitch, &ToggleSwitch::toggled, card, [this, pluginInfo](bool checked) {
             Q_EMIT pluginTaskbarVisibilityChanged(pluginInfo.metaInfo.id, pluginInfo.filePath, checked);
         });
-        toggleLayout->addSpacing(6);
+        toggleLayout->addSpacing(4);
         toggleLayout->addWidget(taskbarLabel);
         toggleLayout->addWidget(taskbarSwitch);
     }

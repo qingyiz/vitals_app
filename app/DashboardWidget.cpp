@@ -37,8 +37,8 @@ DashboardWidget::DashboardWidget(QWidget* parent)
     : QWidget(parent)
 {
     auto* root = new QVBoxLayout(this);
-    root->setContentsMargins(28, 24, 28, 28);
-    root->setSpacing(18);
+    root->setContentsMargins(22, 18, 22, 20);
+    root->setSpacing(12);
 
     auto* header = new QHBoxLayout();
     header->setSpacing(12);
@@ -62,7 +62,7 @@ DashboardWidget::DashboardWidget(QWidget* parent)
     auto* content = new QWidget(scrollArea);
     m_groupLayout = new QVBoxLayout(content);
     m_groupLayout->setContentsMargins(0, 0, 0, 0);
-    m_groupLayout->setSpacing(14);
+    m_groupLayout->setSpacing(10);
     m_groupLayout->setAlignment(Qt::AlignTop);
 
     m_emptyLabel = new QLabel(QStringLiteral("Waiting for plugin metrics"), content);
@@ -145,13 +145,13 @@ DashboardWidget::PluginGroup& DashboardWidget::ensurePluginGroup(const QString& 
         QFrame#dashboardPluginGroup {
             background: rgba(255, 255, 255, 0.70);
             border: 1px solid #dedee3;
-            border-radius: 10px;
+            border-radius: 8px;
         }
         QPushButton#dashboardGroupToggle {
             background: transparent;
             border: none;
             color: #1d252d;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 700;
             text-align: left;
             padding: 0;
@@ -159,8 +159,8 @@ DashboardWidget::PluginGroup& DashboardWidget::ensurePluginGroup(const QString& 
     )"));
 
     auto* groupLayout = new QVBoxLayout(group.container);
-    groupLayout->setContentsMargins(14, 12, 14, 14);
-    groupLayout->setSpacing(12);
+    groupLayout->setContentsMargins(12, 10, 12, 12);
+    groupLayout->setSpacing(9);
 
     auto* header = new QHBoxLayout();
     header->setSpacing(10);
@@ -184,8 +184,8 @@ DashboardWidget::PluginGroup& DashboardWidget::ensurePluginGroup(const QString& 
     group.detailsContainer = new QWidget(group.container);
     group.detailsGrid = new QGridLayout(group.detailsContainer);
     group.detailsGrid->setContentsMargins(0, 0, 0, 0);
-    group.detailsGrid->setHorizontalSpacing(12);
-    group.detailsGrid->setVerticalSpacing(12);
+    group.detailsGrid->setHorizontalSpacing(10);
+    group.detailsGrid->setVerticalSpacing(10);
     group.detailsContainer->hide();
     groupLayout->addWidget(group.detailsContainer);
 

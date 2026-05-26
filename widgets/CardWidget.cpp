@@ -12,7 +12,7 @@ CardWidget::CardWidget(const QString& title, QWidget* parent)
 {
     setFrameShape(QFrame::StyledPanel);
     setObjectName(QStringLiteral("metricCard"));
-    setMinimumHeight(124);
+    setMinimumHeight(82);
 
     auto* outerLayout = new QHBoxLayout(this);
     outerLayout->setContentsMargins(0, 0, 0, 0);
@@ -23,8 +23,8 @@ CardWidget::CardWidget(const QString& title, QWidget* parent)
     m_accentStrip->setFixedWidth(4);
 
     auto* layout = new QVBoxLayout();
-    layout->setContentsMargins(15, 13, 15, 13);
-    layout->setSpacing(7);
+    layout->setContentsMargins(12, 10, 12, 10);
+    layout->setSpacing(5);
 
     m_titleLabel = new QLabel(title, this);
     m_titleLabel->setObjectName(QStringLiteral("cardTitle"));
@@ -40,7 +40,7 @@ CardWidget::CardWidget(const QString& title, QWidget* parent)
     m_progressBar->setObjectName(QStringLiteral("cardProgress"));
     m_progressBar->setRange(0, 100);
     m_progressBar->setTextVisible(false);
-    m_progressBar->setFixedHeight(5);
+    m_progressBar->setFixedHeight(4);
     m_progressBar->hide();
 
     layout->addWidget(m_titleLabel);
