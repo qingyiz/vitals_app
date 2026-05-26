@@ -25,6 +25,8 @@ target_sources(VitalsApp
     PRIVATE
         platform/taskbar/WindowsTaskbarIndicator.h
         platform/taskbar/WindowsTaskbarIndicator.cpp
+        platform/taskbar/WindowsTaskbarOverlayWidget.h
+        platform/taskbar/WindowsTaskbarOverlayWidget.cpp
         platform/taskbar/LinuxTaskbarIndicator.h
         platform/taskbar/LinuxTaskbarIndicator.cpp
 )
@@ -56,4 +58,8 @@ target_link_libraries(VitalsApp
 
 if(APPLE)
     target_link_libraries(VitalsApp PRIVATE "-framework Cocoa")
+endif()
+
+if(WIN32)
+    target_link_libraries(VitalsApp PRIVATE shell32 user32)
 endif()

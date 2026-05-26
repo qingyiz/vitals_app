@@ -92,11 +92,11 @@ Start with [docs/PLUGIN_DEVELOPMENT.md](docs/PLUGIN_DEVELOPMENT.md) if you want 
 
 ## Plugin Status
 
-The current codebase includes the following built-in plugins. All of them are declared as monitor-category plugins and currently target macOS through `supportedPlatforms: ["macos"]` metadata and macOS collector implementations under `platform/macos/`. The host applies a stable default navigation order based on monitor priority: system information first, then CPU, memory, GPU, network, disk, battery, process, and any remaining plugins by name.
+The current codebase includes the following built-in plugins. All of them are declared as monitor-category plugins, and each plugin advertises its implemented platforms through `supportedPlatforms` metadata. The host applies a stable default navigation order based on monitor priority: system information first, then CPU, memory, GPU, network, disk, battery, process, and any remaining plugins by name.
 
 | Plugin | ID | Capabilities | Metrics / data | Implemented platforms |
 | --- | --- | --- | --- | --- |
-| System Information | `com.vitals.systeminfo` | Monitor, panel, taskbar, settings | Device name, OS version, CPU model, GPU model, total memory, uptime | macOS |
+| System Information | `com.vitals.systeminfo` | Monitor, panel, taskbar, settings | Device name, OS version, CPU model, GPU model, total memory, uptime | macOS, Windows |
 | CPU Monitor | `com.vitals.cpu` | Monitor, panel, taskbar, settings | CPU model, logical cores, total CPU usage, per-core usage | macOS |
 | Memory Monitor | `com.vitals.memory` | Monitor, panel, taskbar | Total memory, used memory, available memory, memory usage percentage | macOS |
 | Network Monitor | `com.vitals.network` | Monitor, panel, taskbar, settings | Primary interface, active interfaces, download/upload rate, total received/sent bytes | macOS |
@@ -112,6 +112,8 @@ The initial framework includes:
 - Platform-aware plugin loading through `supportedPlatforms` metadata.
 - Qt host application with dashboard and navigation.
 - Cross-platform taskbar/tray/menu-bar indicator fed by `MetricCenter`, with capability-aware plugin integration.
+- Windows taskbar text overlay for plugin summaries, with the detail popup opened from the visible taskbar text area instead of the hidden tray icon.
+- Per-plugin taskbar visibility controls in the plugin center; disabling and re-enabling a plugin taskbar display rebuilds the Windows overlay cleanly.
 - System information, CPU, memory, and network plugins loaded through the plugin runtime using the new "plugin shell + capability objects" structure.
 - Stable plugin display ordering in the host runtime, so system information appears before CPU, memory, and other monitor plugins regardless of filesystem scan order.
 

@@ -35,8 +35,8 @@ TaskbarMenuDetailWidget::TaskbarMenuDetailWidget(QWidget* parent)
     setObjectName(QStringLiteral("taskbarDetailMenu"));
 
     m_layout = new QVBoxLayout(this);
-    m_layout->setContentsMargins(12, 12, 12, 12);
-    m_layout->setSpacing(10);
+    m_layout->setContentsMargins(0, 0, 0, 0);
+    m_layout->setSpacing(0);
 
     setStyleSheet(QStringLiteral(R"(
         QWidget#taskbarDetailMenu {
