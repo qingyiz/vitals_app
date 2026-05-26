@@ -8,9 +8,30 @@ The host application owns the main window, navigation, plugin lifecycle, metric 
 
 ## Screenshots
 
-![Vitals dashboard overview](images/dashboard.png)
+The current macOS build already demonstrates the main host shell, plugin-managed pages, and menu-bar metric details.
 
-![Network Monitor menu bar detail](images/newwork_menubar.png)
+<p align="center">
+  <img src="images/dashboard.png" alt="Vitals dashboard overview" width="880">
+</p>
+
+<p align="center"><strong>Dashboard overview</strong><br>
+The dashboard collects live plugin metrics into one host-owned view while keeping concrete monitoring logic inside plugins.</p>
+
+<p align="center">
+  <img src="images/plugins.png" alt="Vitals plugin center" width="880">
+</p>
+
+<p align="center"><strong>Plugin center</strong><br>
+Built-in plugins expose runtime status, platform metadata, and menu-bar visibility controls through the host plugin manager.</p>
+
+### Menu-Bar Details
+
+Each plugin can contribute a compact menu-bar summary and a richer detail view through taskbar capabilities.
+
+| CPU Monitor | Memory Monitor | Network Monitor |
+| --- | --- | --- |
+| <img src="images/cpu_menubar.png" alt="CPU Monitor menu-bar detail" width="260"> | <img src="images/memory_menubar.png" alt="Memory Monitor menu-bar detail" width="260"> | <img src="images/network_menubar.png" alt="Network Monitor menu-bar detail" width="260"> |
+| Total and per-core CPU usage with refresh interval context. | Used, available, and total physical memory at a glance. | Active interface, live transfer rates, and accumulated traffic. |
 
 ## Features
 
@@ -19,7 +40,7 @@ The host application owns the main window, navigation, plugin lifecycle, metric 
 - Metric center for collecting and distributing plugin-provided metric data.
 - Platform-aware plugin loading through `supportedPlatforms` metadata.
 - Cross-platform taskbar, tray, or menu-bar indicator backed by live metrics.
-- Built-in CPU, memory, network, and system information plugins using the plugin runtime.
+- Built-in system information, CPU, memory, and network plugins using the plugin runtime.
 
 ## Requirements
 
@@ -71,14 +92,14 @@ Start with [docs/PLUGIN_DEVELOPMENT.md](docs/PLUGIN_DEVELOPMENT.md) if you want 
 
 ## Plugin Status
 
-The current codebase includes the following built-in plugins. All of them are declared as monitor-category plugins and currently target macOS through `supportedPlatforms: ["macos"]` metadata and macOS collector implementations under `platform/macos/`.
+The current codebase includes the following built-in plugins. All of them are declared as monitor-category plugins and currently target macOS through `supportedPlatforms: ["macos"]` metadata and macOS collector implementations under `platform/macos/`. The host applies a stable default navigation order based on monitor priority: system information first, then CPU, memory, GPU, network, disk, battery, process, and any remaining plugins by name.
 
 | Plugin | ID | Capabilities | Metrics / data | Implemented platforms |
 | --- | --- | --- | --- | --- |
+| System Information | `com.vitals.systeminfo` | Monitor, panel, taskbar, settings | Device name, OS version, CPU model, GPU model, total memory, uptime | macOS |
 | CPU Monitor | `com.vitals.cpu` | Monitor, panel, taskbar, settings | CPU model, logical cores, total CPU usage, per-core usage | macOS |
 | Memory Monitor | `com.vitals.memory` | Monitor, panel, taskbar | Total memory, used memory, available memory, memory usage percentage | macOS |
 | Network Monitor | `com.vitals.network` | Monitor, panel, taskbar, settings | Primary interface, active interfaces, download/upload rate, total received/sent bytes | macOS |
-| System Information | `com.vitals.systeminfo` | Monitor, panel, taskbar, settings | Device name, OS version, CPU model, GPU model, total memory, uptime | macOS |
 
 Other platforms are not implemented yet. The plugin manager will skip plugins whose `supportedPlatforms` metadata does not match the current host platform.
 
@@ -91,7 +112,8 @@ The initial framework includes:
 - Platform-aware plugin loading through `supportedPlatforms` metadata.
 - Qt host application with dashboard and navigation.
 - Cross-platform taskbar/tray/menu-bar indicator fed by `MetricCenter`, with capability-aware plugin integration.
-- CPU, memory, network, and system information plugins loaded through the plugin runtime using the new "plugin shell + capability objects" structure.
+- System information, CPU, memory, and network plugins loaded through the plugin runtime using the new "plugin shell + capability objects" structure.
+- Stable plugin display ordering in the host runtime, so system information appears before CPU, memory, and other monitor plugins regardless of filesystem scan order.
 
 See `docs/TASK_PLAN.md` for the current task plan.
 
@@ -125,9 +147,30 @@ Vitals 是一个基于 C++ / Qt / CMake 的桌面系统监控框架。项目围�
 
 ## 截图
 
-![Vitals 仪表盘概览](images/dashboard.png)
+当前 macOS 构建已经跑通宿主外壳、插件页面以及菜单栏指标详情。
 
-![Network Monitor 菜单栏详情](images/newwork_menubar.png)
+<p align="center">
+  <img src="images/dashboard.png" alt="Vitals 仪表盘概览" width="880">
+</p>
+
+<p align="center"><strong>Dashboard 总览</strong><br>
+Dashboard 将插件上报的实时指标汇总到宿主统一视图中，具体采集逻辑仍然保留在插件内部。</p>
+
+<p align="center">
+  <img src="images/plugins.png" alt="Vitals 插件中心" width="880">
+</p>
+
+<p align="center"><strong>插件中心</strong><br>
+内置插件通过宿主插件管理器展示运行状态、平台元数据和菜单栏显示开关。</p>
+
+### 菜单栏详情
+
+每个插件都可以通过任务栏能力贡献紧凑的菜单栏摘要，以及信息更完整的详情视图。
+
+| CPU Monitor | Memory Monitor | Network Monitor |
+| --- | --- | --- |
+| <img src="images/cpu_menubar.png" alt="CPU Monitor 菜单栏详情" width="260"> | <img src="images/memory_menubar.png" alt="Memory Monitor 菜单栏详情" width="260"> | <img src="images/network_menubar.png" alt="Network Monitor 菜单栏详情" width="260"> |
+| 展示 CPU 总使用率、单核心使用率和刷新间隔信息。 | 快速查看已用、可用和总物理内存。 | 展示活跃网卡、实时上传/下载速率和累计流量。 |
 
 ## 功能特性
 
@@ -136,7 +179,7 @@ Vitals 是一个基于 C++ / Qt / CMake 的桌面系统监控框架。项目围�
 - 通过指标中心收集并分发插件提供的指标数据。
 - 通过 `supportedPlatforms` 元数据支持按平台加载插件。
 - 支持由实时指标驱动的跨平台任务栏、托盘或菜单栏状态显示。
-- 内置 CPU、内存、网络和系统信息插件，并通过插件运行时加载。
+- 内置系统信息、CPU、内存和网络插件，并通过插件运行时加载。
 
 ## 环境要求
 
@@ -188,14 +231,14 @@ Vitals 通过插件扩展能力。一个插件可以暴露一种或多种能力�
 
 ## 插件状态
 
-当前代码包含以下内置插件。它们都声明为 monitor 类插件，并且目前都通过 `supportedPlatforms: ["macos"]` 元数据和 `platform/macos/` 下的 macOS collector 实现支持 macOS。
+当前代码包含以下内置插件。它们都声明为 monitor 类插件，并且目前都通过 `supportedPlatforms: ["macos"]` 元数据和 `platform/macos/` 下的 macOS collector 实现支持 macOS。宿主会按监控优先级应用稳定的默认导航顺序：系统信息优先，其次是 CPU、内存、GPU、网络、磁盘、电池、进程，其他插件再按名称排序。
 
 | 插件 | ID | 能力 | 指标 / 数据 | 已实现平台 |
 | --- | --- | --- | --- | --- |
+| System Information | `com.vitals.systeminfo` | 监控、面板、任务栏、设置 | 设备名、系统版本、CPU 型号、GPU 型号、总内存、运行时长 | macOS |
 | CPU Monitor | `com.vitals.cpu` | 监控、面板、任务栏、设置 | CPU 型号、逻辑核心数、CPU 总使用率、单核心使用率 | macOS |
 | Memory Monitor | `com.vitals.memory` | 监控、面板、任务栏 | 总内存、已用内存、可用内存、内存使用率 | macOS |
 | Network Monitor | `com.vitals.network` | 监控、面板、任务栏、设置 | 主网络接口、活跃接口、下载/上传速率、累计接收/发送字节数 | macOS |
-| System Information | `com.vitals.systeminfo` | 监控、面板、任务栏、设置 | 设备名、系统版本、CPU 型号、GPU 型号、总内存、运行时长 | macOS |
 
 其他平台尚未实现。插件管理器会根据 `supportedPlatforms` 元数据判断平台兼容性，并跳过不匹配当前宿主平台的插件。
 
@@ -208,7 +251,8 @@ Vitals 通过插件扩展能力。一个插件可以暴露一种或多种能力�
 - 通过 `supportedPlatforms` 元数据实现的平台感知插件加载。
 - 带仪表盘和导航的 Qt 宿主应用。
 - 由 `MetricCenter` 驱动、可感知插件能力的跨平台任务栏/托盘/菜单栏指示器。
-- CPU、内存、网络和系统信息插件，使用新的 “plugin shell + capability objects” 结构通过插件运行时加载。
+- 系统信息、CPU、内存和网络插件，使用新的 “plugin shell + capability objects” 结构通过插件运行时加载。
+- 宿主运行时已经支持稳定的插件展示顺序，系统信息会优先显示，然后是 CPU、内存和其他监控插件，不再依赖文件系统扫描顺序。
 
 当前任务计划见 [docs/TASK_PLAN.md](docs/TASK_PLAN.md)。
 
