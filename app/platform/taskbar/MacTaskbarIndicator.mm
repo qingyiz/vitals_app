@@ -25,6 +25,16 @@ NSString* nsStringFromQString(const QString& value)
     return [NSString stringWithUTF8String:value.toUtf8().constData()];
 }
 
+NSString* autosaveNameForDisplay(const TaskbarPluginDisplay& display)
+{
+    QString stableId = display.pluginId.trimmed();
+    if (stableId.isEmpty()) {
+        stableId = display.pluginName.trimmed();
+    }
+
+    return nsStringFromQString(QStringLiteral("com.vitals.menubar.%1").arg(stableId));
+}
+
 NSImage* nsImageFromQPixmap(const QPixmap& pixmap, bool isTemplate)
 {
     if (pixmap.isNull()) {
@@ -462,6 +472,9 @@ void MacTaskbarIndicator::refresh()
             NativeBridge::Entry entry;
             entry.pluginId = display.pluginId;
             entry.statusItem = [[[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength] retain];
+            if ([entry.statusItem respondsToSelector:@selector(setAutosaveName:)]) {
+                [entry.statusItem setAutosaveName:autosaveNameForDisplay(display)];
+            }
             entry.menu = [[NSMenu alloc] initWithTitle:nsStringFromQString(display.pluginName)];
             entry.detailItem = [[NSMenuItem alloc] initWithTitle:nsStringFromQString(display.pluginName)
                                                            action:nil
