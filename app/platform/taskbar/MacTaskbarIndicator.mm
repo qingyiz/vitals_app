@@ -51,6 +51,20 @@ NSImage* nsImageFromQPixmap(const QPixmap& pixmap, bool isTemplate)
     return image;
 }
 
+CGFloat logicalWidthFromQPixmap(const QPixmap& pixmap)
+{
+    if (pixmap.isNull()) {
+        return 0.0;
+    }
+
+    const qreal devicePixelRatio = pixmap.devicePixelRatio();
+    if (devicePixelRatio <= 0.0) {
+        return pixmap.width();
+    }
+
+    return pixmap.width() / devicePixelRatio;
+}
+
 NSColor* colorFromHex(const QString& hex, NSColor* fallback)
 {
     QString value = hex;
@@ -504,6 +518,7 @@ void MacTaskbarIndicator::refresh()
             [button setToolTip:nsStringFromQString(tooltip)];
             [button setImage:nsImageFromQPixmap(pixmap, prefersSystemTintedText())];
             [button setImagePosition:NSImageOnly];
+            [entry.statusItem setLength:logicalWidthFromQPixmap(pixmap) + 2.0];
 
             const TaskbarDetailContent content = detailContentForDisplay(display, values);
             [entry.detailItem setTitle:@""];
