@@ -33,6 +33,23 @@ QString ConfigManager::pluginConfigPath(const QString& pluginId) const
     return dir.filePath(QStringLiteral("plugins/%1.json").arg(pluginId));
 }
 
+QString ConfigManager::language() const
+{
+    return loadAppConfig().value(QStringLiteral("language")).toString(QStringLiteral("en-US"));
+}
+
+bool ConfigManager::setLanguage(const QString& languageCode)
+{
+    QDir rootDir(m_rootPath);
+    if (!rootDir.exists() && !rootDir.mkpath(QStringLiteral("."))) {
+        return false;
+    }
+
+    QJsonObject rootObject = loadAppConfig();
+    rootObject.insert(QStringLiteral("language"), languageCode);
+    return saveAppConfig(rootObject);
+}
+
 bool ConfigManager::isPluginEnabled(const QString& pluginId, const QString& filePath) const
 {
     const QJsonObject root = loadAppConfig();

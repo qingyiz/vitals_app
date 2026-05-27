@@ -34,9 +34,9 @@ bool SystemInfoPlugin::initialize(IAppContext* context)
     m_context = context;
 
     m_monitorCapability = std::make_unique<SystemInfoMonitorCapability>();
-    m_panelCapability = std::make_unique<SystemInfoPanelCapability>();
-    m_taskbarCapability = std::make_unique<SystemInfoTaskbarCapability>(m_monitorCapability.get());
-    m_settingsCapability = std::make_unique<SystemInfoSettingsCapability>();
+    m_panelCapability = std::make_unique<SystemInfoPanelCapability>(context);
+    m_taskbarCapability = std::make_unique<SystemInfoTaskbarCapability>(m_monitorCapability.get(), context);
+    m_settingsCapability = std::make_unique<SystemInfoSettingsCapability>(context);
 
     if (!m_monitorCapability->initialize(context)) {
         shutdown();

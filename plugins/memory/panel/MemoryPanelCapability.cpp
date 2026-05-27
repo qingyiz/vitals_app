@@ -1,8 +1,14 @@
 #include "panel/MemoryPanelCapability.h"
 
+#include "IAppContext.h"
 #include "MemoryPanelWidget.h"
 
 namespace Vitals {
+
+MemoryPanelCapability::MemoryPanelCapability(IAppContext* context)
+    : m_context(context)
+{
+}
 
 QString MemoryPanelCapability::panelId() const
 {
@@ -11,7 +17,8 @@ QString MemoryPanelCapability::panelId() const
 
 QString MemoryPanelCapability::panelName() const
 {
-    return QStringLiteral("Memory Monitor");
+    return m_context ? m_context->translate(QStringLiteral("nav.memory"), QStringLiteral("Memory"))
+                     : QStringLiteral("Memory");
 }
 
 QString MemoryPanelCapability::panelIconKey() const
@@ -21,7 +28,7 @@ QString MemoryPanelCapability::panelIconKey() const
 
 QWidget* MemoryPanelCapability::createPanel(QWidget* parent)
 {
-    auto* panel = new MemoryPanelWidget(parent);
+    auto* panel = new MemoryPanelWidget(m_context, parent);
     panel->applySnapshot(m_lastSnapshot);
     m_panel = panel;
     return panel;

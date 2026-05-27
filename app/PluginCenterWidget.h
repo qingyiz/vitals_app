@@ -10,6 +10,7 @@ class QVBoxLayout;
 namespace Vitals {
 
 class ConfigManager;
+class LanguageManager;
 
 /**
  * \if ENGLISH
@@ -32,7 +33,7 @@ class PluginCenterWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit PluginCenterWidget(ConfigManager* configManager, QWidget* parent = nullptr);
+    explicit PluginCenterWidget(ConfigManager* configManager, LanguageManager* languageManager, QWidget* parent = nullptr);
 
     void setPluginInfos(const QList<PluginRuntimeInfo>& pluginInfos);
 
@@ -42,12 +43,15 @@ Q_SIGNALS:
 
 private:
     QWidget* createPluginCard(const PluginRuntimeInfo& pluginInfo);
-    static QString statusText(PluginRuntimeInfo::Status status);
+    QString statusText(PluginRuntimeInfo::Status status) const;
     static QString statusColor(PluginRuntimeInfo::Status status);
     static QString supportedPlatformsText(const PluginRuntimeInfo& pluginInfo);
     static void clearLayout(QLayout* layout);
+    QString text(const QString& key, const QString& fallback) const;
 
     ConfigManager* m_configManager = nullptr;
+    LanguageManager* m_languageManager = nullptr;
+    QLabel* m_titleLabel = nullptr;
     QLabel* m_summaryLabel = nullptr;
     QVBoxLayout* m_cardsLayout = nullptr;
 };

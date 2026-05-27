@@ -10,6 +10,7 @@
 #include "NavigationWidget.h"
 #include "PluginCenterWidget.h"
 #include "config/ConfigManager.h"
+#include "language/LanguageManager.h"
 #include "metric/MetricCenter.h"
 #include "platform/taskbar/TaskbarIndicator.h"
 #include "platform/taskbar/TaskbarIndicatorFactory.h"
@@ -17,6 +18,7 @@
 
 #include <QApplication>
 #include <QColor>
+#include <QComboBox>
 #include <QCoreApplication>
 #include <QDir>
 #include <QHBoxLayout>
@@ -24,6 +26,7 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QSizePolicy>
+#include <QSignalBlocker>
 #include <QStackedWidget>
 #include <QStatusBar>
 #include <QVBoxLayout>
@@ -68,30 +71,18 @@ NavigationIconSpec iconSpecForKey(const QString& key)
     return {key.left(1).toUpper(), QColor(QStringLiteral("#8e8e93")), Qt::white};
 }
 
-QString navigationTitleForPage(const QString& id, const QString& title)
-{
-    if (id == QStringLiteral("cpu")) {
-        return QStringLiteral("CPU");
-    }
-    if (id == QStringLiteral("memory")) {
-        return QStringLiteral("Memory");
-    }
-    if (id == QStringLiteral("network")) {
-        return QStringLiteral("Network");
-    }
-    return title;
-}
-
 } // namespace
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
     , m_metricCenter(new MetricCenter(this))
     , m_configManager(new ConfigManager())
-    , m_appContext(new AppContext(m_metricCenter, m_configManager))
+    , m_languageManager(new LanguageManager(this))
+    , m_appContext(new AppContext(m_metricCenter, m_configManager, m_languageManager))
     , m_pluginManager(new PluginManager(this))
     , m_taskbarIndicator(createTaskbarIndicator(this))
 {
+    m_languageManager->initialize(m_configManager->language());
     setupUi();
     m_taskbarIndicator->initialize(this);
     m_taskbarIndicator->bindMetricCenter(m_metricCenter);
@@ -116,7 +107,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::setupUi()
 {
-    setWindowTitle(QStringLiteral("Vitals"));
+    setWindowTitle(text(QStringLiteral("app.title"), QStringLiteral("Vitals")));
     applyStyle();
 
     auto* central = new QWidget(this);
@@ -135,21 +126,22 @@ void MainWindow::setupUi()
 
     connect(m_navigation, &QListWidget::currentRowChanged,
         m_pages, &QStackedWidget::setCurrentIndex);
+    setupLanguageSelector();
     rebuildPages();
 
-    statusBar()->showMessage(QStringLiteral("Framework ready"));
+    statusBar()->showMessage(text(QStringLiteral("status.frameworkReady"), QStringLiteral("Framework ready")));
 }
 
 void MainWindow::loadPlugins()
 {
     connect(m_pluginManager, &PluginManager::pluginLoaded, this,
         [this](const QString& pluginId, const QString& pluginName) {
-            statusBar()->showMessage(QStringLiteral("Loaded plugin: %1").arg(pluginName), 3000);
+            statusBar()->showMessage(text(QStringLiteral("status.pluginLoaded"), QStringLiteral("Loaded plugin: %1")).arg(pluginName), 3000);
             Q_UNUSED(pluginId)
         }, Qt::UniqueConnection);
     connect(m_pluginManager, &PluginManager::pluginSkipped, this,
         [this](const QString& path, const QString& reason) {
-            statusBar()->showMessage(QStringLiteral("Skipped plugin: %1").arg(reason), 3000);
+            statusBar()->showMessage(text(QStringLiteral("status.pluginSkipped"), QStringLiteral("Skipped plugin: %1")).arg(reason), 3000);
             Q_UNUSED(path)
         }, Qt::UniqueConnection);
 
@@ -160,7 +152,8 @@ void MainWindow::loadPlugins()
         m_pluginCenterPage->setPluginInfos(m_pluginManager->pluginInfos());
     }
 
-    statusBar()->showMessage(QStringLiteral("Loaded %1 plugin(s)").arg(m_pluginManager->loadedPluginCount()));
+    statusBar()->showMessage(text(QStringLiteral("status.pluginsLoaded"), QStringLiteral("Loaded %1 plugin(s)"))
+        .arg(m_pluginManager->loadedPluginCount()));
 }
 
 void MainWindow::reloadPlugins()
@@ -173,7 +166,7 @@ void MainWindow::reloadPlugins()
     loadPlugins();
     rebuildPages(preferredPageId);
     m_pluginManager->startAll();
-    statusBar()->showMessage(QStringLiteral("Plugin enable state updated"), 3000);
+    statusBar()->showMessage(text(QStringLiteral("status.pluginEnableUpdated"), QStringLiteral("Plugin enable state updated")), 3000);
 }
 
 void MainWindow::clearLoadedPluginMetrics()
@@ -238,6 +231,61 @@ void MainWindow::addPage(const QString& id, const QString& title, QWidget* page,
     m_pages->addWidget(page);
 }
 
+void MainWindow::setupLanguageSelector()
+{
+    m_languageLabel = new QLabel(text(QStringLiteral("language.label"), QStringLiteral("Language")), this);
+    m_languageLabel->setObjectName(QStringLiteral("languageSelectorLabel"));
+    m_languageCombo = new QComboBox(this);
+    m_languageCombo->setMinimumWidth(132);
+
+    refreshLanguageSelector();
+
+    connect(m_languageCombo, QOverload<int>::of(&QComboBox::activated), this, [this](int index) {
+        const QString languageCode = m_languageCombo->itemData(index).toString();
+        if (languageCode.isEmpty() || languageCode == m_languageManager->currentLanguage()) {
+            return;
+        }
+        if (!m_languageManager->setLanguage(languageCode)) {
+            return;
+        }
+
+        m_configManager->setLanguage(languageCode);
+        const QString currentPageId = m_navigation ? m_navigation->currentItemId() : QString();
+        setWindowTitle(text(QStringLiteral("app.title"), QStringLiteral("Vitals")));
+        m_languageLabel->setText(text(QStringLiteral("language.label"), QStringLiteral("Language")));
+        refreshLanguageSelector();
+        rebuildPages(currentPageId);
+        statusBar()->showMessage(text(QStringLiteral("status.languageChanged"), QStringLiteral("Language switched to %1"))
+                .arg(m_languageCombo->currentText()),
+            3000);
+    });
+
+    statusBar()->addPermanentWidget(m_languageLabel);
+    statusBar()->addPermanentWidget(m_languageCombo);
+}
+
+void MainWindow::refreshLanguageSelector()
+{
+    if (!m_languageCombo) {
+        return;
+    }
+
+    const QSignalBlocker blocker(m_languageCombo);
+    m_languageCombo->clear();
+    int currentIndex = -1;
+    const QList<LanguageManager::Language> languages = m_languageManager->availableLanguages();
+    for (const LanguageManager::Language& language : languages) {
+        const QString label = language.nativeName.isEmpty() ? language.name : language.nativeName;
+        m_languageCombo->addItem(label, language.code);
+        if (language.code == m_languageManager->currentLanguage()) {
+            currentIndex = m_languageCombo->count() - 1;
+        }
+    }
+    if (currentIndex >= 0) {
+        m_languageCombo->setCurrentIndex(currentIndex);
+    }
+}
+
 QIcon MainWindow::createNavigationIcon(const QString& iconKey) const
 {
     const NavigationIconSpec spec = iconSpecForKey(iconKey);
@@ -261,9 +309,31 @@ QIcon MainWindow::createNavigationIcon(const QString& iconKey) const
     return QIcon(pixmap);
 }
 
+QString MainWindow::text(const QString& key, const QString& fallback) const
+{
+    return m_languageManager ? m_languageManager->translate(key, fallback) : fallback;
+}
+
+QString MainWindow::navigationTitleForPage(const QString& id, const QString& title) const
+{
+    if (id == QStringLiteral("cpu")) {
+        return text(QStringLiteral("nav.cpu"), QStringLiteral("CPU"));
+    }
+    if (id == QStringLiteral("memory")) {
+        return text(QStringLiteral("nav.memory"), QStringLiteral("Memory"));
+    }
+    if (id == QStringLiteral("network")) {
+        return text(QStringLiteral("nav.network"), QStringLiteral("Network"));
+    }
+    if (id == QStringLiteral("systeminfo")) {
+        return text(QStringLiteral("nav.systemInfo"), QStringLiteral("System Info"));
+    }
+    return title;
+}
+
 QWidget* MainWindow::createPluginManagerPage()
 {
-    m_pluginCenterPage = new PluginCenterWidget(m_configManager, this);
+    m_pluginCenterPage = new PluginCenterWidget(m_configManager, m_languageManager, this);
     connect(m_pluginCenterPage, &PluginCenterWidget::pluginEnabledChanged, this,
         [this](const QString& pluginId, const QString& filePath, bool enabled) {
             m_configManager->setPluginEnabled(pluginId, filePath, enabled);
@@ -273,7 +343,8 @@ QWidget* MainWindow::createPluginManagerPage()
         [this](const QString& pluginId, const QString& filePath, bool enabled) {
             m_configManager->setPluginTaskbarEnabled(pluginId, filePath, enabled);
             syncTaskbarDisplays();
-            statusBar()->showMessage(QStringLiteral("Updated menu bar visibility for %1").arg(pluginId), 3000);
+            statusBar()->showMessage(text(QStringLiteral("status.taskbarVisibilityUpdated"),
+                QStringLiteral("Updated menu bar visibility for %1")).arg(pluginId), 3000);
         });
     return m_pluginCenterPage;
 }
@@ -288,12 +359,12 @@ void MainWindow::rebuildPages(const QString& preferredPageId)
         widget->deleteLater();
     }
 
-    auto* dashboard = new DashboardWidget(this);
+    auto* dashboard = new DashboardWidget(m_languageManager, this);
     dashboard->bindMetricCenter(m_metricCenter);
-    addPage(QStringLiteral("dashboard"), QStringLiteral("Dashboard"), dashboard,
+    addPage(QStringLiteral("dashboard"), text(QStringLiteral("nav.dashboard"), QStringLiteral("Dashboard")), dashboard,
         createNavigationIcon(QStringLiteral("dashboard")));
 
-    addPage(QStringLiteral("plugins"), QStringLiteral("Plugins"), createPluginManagerPage(),
+    addPage(QStringLiteral("plugins"), text(QStringLiteral("nav.plugins"), QStringLiteral("Plugins")), createPluginManagerPage(),
         createNavigationIcon(QStringLiteral("plugins")));
     if (m_pluginCenterPage) {
         m_pluginCenterPage->setPluginInfos(m_pluginManager->pluginInfos());
@@ -353,6 +424,11 @@ void MainWindow::applyStyle()
             background: rgba(10, 132, 255, 0.14);
             color: #0057c2;
             font-weight: 600;
+        }
+        QLabel#languageSelectorLabel {
+            color: #6e6e73;
+            font-size: 12px;
+            font-weight: 700;
         }
         QLabel#pageTitle {
             color: #1d252d;

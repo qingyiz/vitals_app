@@ -1,8 +1,14 @@
 #include "panel/CpuPanelCapability.h"
 
 #include "CpuPanelWidget.h"
+#include "IAppContext.h"
 
 namespace Vitals {
+
+CpuPanelCapability::CpuPanelCapability(IAppContext* context)
+    : m_context(context)
+{
+}
 
 QString CpuPanelCapability::panelId() const
 {
@@ -11,7 +17,8 @@ QString CpuPanelCapability::panelId() const
 
 QString CpuPanelCapability::panelName() const
 {
-    return QStringLiteral("CPU Monitor");
+    return m_context ? m_context->translate(QStringLiteral("nav.cpu"), QStringLiteral("CPU"))
+                     : QStringLiteral("CPU");
 }
 
 QString CpuPanelCapability::panelIconKey() const
@@ -21,7 +28,7 @@ QString CpuPanelCapability::panelIconKey() const
 
 QWidget* CpuPanelCapability::createPanel(QWidget* parent)
 {
-    auto* panel = new CpuPanelWidget(parent);
+    auto* panel = new CpuPanelWidget(m_context, parent);
     panel->applySnapshot(m_lastSnapshot);
     m_panel = panel;
     return panel;

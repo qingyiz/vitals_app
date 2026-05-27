@@ -1,6 +1,7 @@
 #include "PluginCenterWidget.h"
 
 #include "config/ConfigManager.h"
+#include "language/LanguageManager.h"
 #include "ToggleSwitch.h"
 
 #include <QFileInfo>
@@ -29,9 +30,10 @@ QLabel* createBodyLabel(const QString& text, const QString& objectName, QWidget*
 
 } // namespace
 
-PluginCenterWidget::PluginCenterWidget(ConfigManager* configManager, QWidget* parent)
+PluginCenterWidget::PluginCenterWidget(ConfigManager* configManager, LanguageManager* languageManager, QWidget* parent)
     : QWidget(parent)
     , m_configManager(configManager)
+    , m_languageManager(languageManager)
 {
     setMinimumSize(0, 0);
     setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
@@ -40,8 +42,8 @@ PluginCenterWidget::PluginCenterWidget(ConfigManager* configManager, QWidget* pa
     rootLayout->setContentsMargins(22, 18, 22, 20);
     rootLayout->setSpacing(10);
 
-    auto* title = new QLabel(QStringLiteral("Plugins"), this);
-    title->setObjectName(QStringLiteral("pageTitle"));
+    m_titleLabel = new QLabel(text(QStringLiteral("plugins.title"), QStringLiteral("Plugins")), this);
+    m_titleLabel->setObjectName(QStringLiteral("pageTitle"));
 
     m_summaryLabel = new QLabel(this);
     m_summaryLabel->setObjectName(QStringLiteral("pageSubtitle"));
@@ -65,7 +67,7 @@ PluginCenterWidget::PluginCenterWidget(ConfigManager* configManager, QWidget* pa
 
     scrollArea->setWidget(cardsContainer);
 
-    rootLayout->addWidget(title);
+    rootLayout->addWidget(m_titleLabel);
     rootLayout->addWidget(m_summaryLabel);
     rootLayout->addWidget(scrollArea, 1);
 }
@@ -92,15 +94,16 @@ void PluginCenterWidget::setPluginInfos(const QList<PluginRuntimeInfo>& pluginIn
         m_cardsLayout->addWidget(createPluginCard(pluginInfo));
     }
 
-    m_summaryLabel->setText(QStringLiteral(
-        "%1 loaded, %2 disabled, %3 skipped, %4 failed. Plugin switches apply immediately.")
+    m_summaryLabel->setText(text(QStringLiteral("plugins.summary"),
+        QStringLiteral("%1 loaded, %2 disabled, %3 skipped, %4 failed. Plugin switches apply immediately."))
         .arg(loadedCount)
         .arg(disabledCount)
         .arg(skippedCount)
         .arg(failedCount));
 
     if (pluginInfos.isEmpty()) {
-        auto* empty = new QLabel(QStringLiteral("No plugin binaries were discovered in the runtime plugins directory."), nullptr);
+        auto* empty = new QLabel(text(QStringLiteral("plugins.empty"),
+            QStringLiteral("No plugin binaries were discovered in the runtime plugins directory.")), this);
         empty->setObjectName(QStringLiteral("panelBody"));
         empty->setWordWrap(true);
         m_cardsLayout->addWidget(empty);
@@ -138,7 +141,7 @@ QWidget* PluginCenterWidget::createPluginCard(const PluginRuntimeInfo& pluginInf
     toggleLayout->setContentsMargins(0, 0, 0, 0);
     toggleLayout->setSpacing(8);
 
-    auto* enabledLabel = new QLabel(QStringLiteral("Enabled"), card);
+    auto* enabledLabel = new QLabel(text(QStringLiteral("plugins.enabled"), QStringLiteral("Enabled")), card);
     enabledLabel->setObjectName(QStringLiteral("panelBody"));
     auto* enabledSwitch = new ToggleSwitch(card);
     enabledSwitch->setChecked(m_configManager->isPluginEnabled(pluginInfo.metaInfo.id, pluginInfo.filePath));
@@ -149,7 +152,7 @@ QWidget* PluginCenterWidget::createPluginCard(const PluginRuntimeInfo& pluginInf
     toggleLayout->addWidget(enabledSwitch);
 
     if (pluginInfo.metaInfo.supportsTaskbarDisplay) {
-        auto* taskbarLabel = new QLabel(QStringLiteral("Menu Bar"), card);
+        auto* taskbarLabel = new QLabel(text(QStringLiteral("plugins.menuBar"), QStringLiteral("Menu Bar")), card);
         taskbarLabel->setObjectName(QStringLiteral("panelBody"));
         auto* taskbarSwitch = new ToggleSwitch(card);
         taskbarSwitch->setChecked(
@@ -174,17 +177,20 @@ QWidget* PluginCenterWidget::createPluginCard(const PluginRuntimeInfo& pluginInf
     header->addWidget(status);
 
     auto* meta = createBodyLabel(
-        QStringLiteral("ID: %1\nCategory: %2\nVersion: %3\nAuthor: %4\nSupported Platforms: %5\nMenu Bar: %6")
+        text(QStringLiteral("plugins.meta"),
+            QStringLiteral("ID: %1\nCategory: %2\nVersion: %3\nAuthor: %4\nSupported Platforms: %5\nMenu Bar: %6"))
             .arg(pluginInfo.metaInfo.id.isEmpty() ? QStringLiteral("--") : pluginInfo.metaInfo.id)
             .arg(pluginInfo.metaInfo.category.isEmpty() ? QStringLiteral("--") : pluginInfo.metaInfo.category)
             .arg(pluginInfo.metaInfo.version.isEmpty() ? QStringLiteral("--") : pluginInfo.metaInfo.version)
             .arg(pluginInfo.metaInfo.author.isEmpty() ? QStringLiteral("--") : pluginInfo.metaInfo.author)
             .arg(supportedPlatformsText(pluginInfo))
-            .arg(pluginInfo.metaInfo.supportsTaskbarDisplay ? QStringLiteral("Supported") : QStringLiteral("Not supported")),
+            .arg(pluginInfo.metaInfo.supportsTaskbarDisplay
+                    ? text(QStringLiteral("plugins.supported"), QStringLiteral("Supported"))
+                    : text(QStringLiteral("plugins.notSupported"), QStringLiteral("Not supported"))),
         QStringLiteral("panelBody"), card);
 
     auto* path = createBodyLabel(
-        QStringLiteral("Binary: %1").arg(pluginInfo.filePath),
+        text(QStringLiteral("plugins.binary"), QStringLiteral("Binary: %1")).arg(pluginInfo.filePath),
         QStringLiteral("pluginPathLabel"), card);
 
     layout->addLayout(header);
@@ -192,7 +198,7 @@ QWidget* PluginCenterWidget::createPluginCard(const PluginRuntimeInfo& pluginInf
 
     if (!pluginInfo.reason.isEmpty()) {
         auto* reason = createBodyLabel(
-            QStringLiteral("Reason: %1").arg(pluginInfo.reason),
+            text(QStringLiteral("plugins.reason"), QStringLiteral("Reason: %1")).arg(pluginInfo.reason),
             QStringLiteral("pluginReasonLabel"), card);
         layout->addWidget(reason);
     }
@@ -201,19 +207,19 @@ QWidget* PluginCenterWidget::createPluginCard(const PluginRuntimeInfo& pluginInf
     return card;
 }
 
-QString PluginCenterWidget::statusText(PluginRuntimeInfo::Status status)
+QString PluginCenterWidget::statusText(PluginRuntimeInfo::Status status) const
 {
     switch (status) {
     case PluginRuntimeInfo::Status::Loaded:
-        return QStringLiteral("Loaded");
+        return text(QStringLiteral("plugins.status.loaded"), QStringLiteral("Loaded"));
     case PluginRuntimeInfo::Status::Disabled:
-        return QStringLiteral("Disabled");
+        return text(QStringLiteral("plugins.status.disabled"), QStringLiteral("Disabled"));
     case PluginRuntimeInfo::Status::Skipped:
-        return QStringLiteral("Skipped");
+        return text(QStringLiteral("plugins.status.skipped"), QStringLiteral("Skipped"));
     case PluginRuntimeInfo::Status::Failed:
-        return QStringLiteral("Failed");
+        return text(QStringLiteral("plugins.status.failed"), QStringLiteral("Failed"));
     }
-    return QStringLiteral("Unknown");
+    return text(QStringLiteral("plugins.status.unknown"), QStringLiteral("Unknown"));
 }
 
 QString PluginCenterWidget::statusColor(PluginRuntimeInfo::Status status)
@@ -250,6 +256,11 @@ void PluginCenterWidget::clearLayout(QLayout* layout)
         }
         delete item;
     }
+}
+
+QString PluginCenterWidget::text(const QString& key, const QString& fallback) const
+{
+    return m_languageManager ? m_languageManager->translate(key, fallback) : fallback;
 }
 
 } // namespace Vitals

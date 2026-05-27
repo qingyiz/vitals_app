@@ -1,5 +1,6 @@
 #include "taskbar/MemoryTaskbarCapability.h"
 
+#include "IAppContext.h"
 #include "monitor/MemoryMonitorCapability.h"
 
 #include <QtGlobal>
@@ -32,8 +33,9 @@ QString formatPercent(double value)
 
 } // namespace
 
-MemoryTaskbarCapability::MemoryTaskbarCapability(const MemoryMonitorCapability* monitorCapability)
+MemoryTaskbarCapability::MemoryTaskbarCapability(const MemoryMonitorCapability* monitorCapability, IAppContext* context)
     : m_monitorCapability(monitorCapability)
+    , m_context(context)
 {
 }
 
@@ -53,7 +55,7 @@ QString MemoryTaskbarCapability::tooltip(const QHash<QString, MetricValue>& late
     const quint64 used = latestValues.value(QStringLiteral("memory.used.bytes")).value.toULongLong();
     const quint64 total = latestValues.value(QStringLiteral("memory.total.bytes")).value.toULongLong();
 
-    return QStringLiteral("Memory %1 | %2 of %3 used")
+    return text(QStringLiteral("memory.tooltip"), QStringLiteral("Memory %1 | %2 of %3 used"))
         .arg(formatPercent(usage), formatBytes(used), formatBytes(total));
 }
 
@@ -75,26 +77,31 @@ TaskbarDetailContent MemoryTaskbarCapability::detailContent(const QHash<QString,
     const quint64 total = latestValues.value(QStringLiteral("memory.total.bytes")).value.toULongLong();
 
     TaskbarDetailContent content;
-    content.title = QStringLiteral("Memory Monitor");
-    content.primaryLabel = QStringLiteral("Memory Usage");
+    content.title = text(QStringLiteral("memory.title"), QStringLiteral("Memory Monitor"));
+    content.primaryLabel = text(QStringLiteral("memory.memoryUsage"), QStringLiteral("Memory Usage"));
     content.primaryValue = formatPercent(usage);
     content.accentColor = QStringLiteral("#32d74b");
     content.badges = {
-        {QStringLiteral("USED"), formatBytes(used)},
-        {QStringLiteral("FREE"), formatBytes(free)},
-        {QStringLiteral("INTERVAL"), QStringLiteral("%1s").arg((m_monitorCapability
+        {text(QStringLiteral("memory.usedUpper"), QStringLiteral("USED")), formatBytes(used)},
+        {text(QStringLiteral("memory.freeUpper"), QStringLiteral("FREE")), formatBytes(free)},
+        {text(QStringLiteral("common.intervalUpper"), QStringLiteral("INTERVAL")), QStringLiteral("%1s").arg((m_monitorCapability
                     ? m_monitorCapability->intervalMs()
                     : 2000) / 1000.0, 0, 'f', 1)}
     };
     content.sections.append({
-        QStringLiteral("Memory"),
+        text(QStringLiteral("memory.memory"), QStringLiteral("Memory")),
         {
-            {QStringLiteral("Used"), formatBytes(used), QString(), usage, QStringLiteral("#32d74b")},
-            {QStringLiteral("Available"), formatBytes(free), QString(), -1.0, QString()},
-            {QStringLiteral("Total"), formatBytes(total), QString(), -1.0, QString()}
+            {text(QStringLiteral("memory.used"), QStringLiteral("Used")), formatBytes(used), QString(), usage, QStringLiteral("#32d74b")},
+            {text(QStringLiteral("memory.availableTile"), QStringLiteral("Available")), formatBytes(free), QString(), -1.0, QString()},
+            {text(QStringLiteral("memory.total"), QStringLiteral("Total")), formatBytes(total), QString(), -1.0, QString()}
         }
     });
     return content;
+}
+
+QString MemoryTaskbarCapability::text(const QString& key, const QString& fallback) const
+{
+    return m_context ? m_context->translate(key, fallback) : fallback;
 }
 
 } // namespace Vitals

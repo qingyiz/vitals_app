@@ -34,9 +34,9 @@ bool NetworkMonitorPlugin::initialize(IAppContext* context)
     m_context = context;
 
     m_monitorCapability = std::make_unique<NetworkMonitorCapability>();
-    m_panelCapability = std::make_unique<NetworkPanelCapability>();
-    m_taskbarCapability = std::make_unique<NetworkTaskbarCapability>(m_monitorCapability.get());
-    m_settingsCapability = std::make_unique<NetworkSettingsCapability>();
+    m_panelCapability = std::make_unique<NetworkPanelCapability>(context);
+    m_taskbarCapability = std::make_unique<NetworkTaskbarCapability>(m_monitorCapability.get(), context);
+    m_settingsCapability = std::make_unique<NetworkSettingsCapability>(context);
 
     if (!m_monitorCapability->initialize(context)) {
         shutdown();

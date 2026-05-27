@@ -8,10 +8,13 @@
 namespace Vitals {
 
 class CpuPanelWidget;
+class IAppContext;
 
 class CpuPanelCapability : public IPanelCapability
 {
 public:
+    explicit CpuPanelCapability(IAppContext* context);
+
     QString panelId() const override;
     QString panelName() const override;
     QString panelIconKey() const override;
@@ -20,6 +23,7 @@ public:
     void updateSnapshot(const CpuSnapshot& snapshot);
 
 private:
+    IAppContext* m_context = nullptr;
     CpuSnapshot m_lastSnapshot;
     QPointer<CpuPanelWidget> m_panel;
 };

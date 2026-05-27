@@ -34,9 +34,9 @@ bool CpuMonitorPlugin::initialize(IAppContext* context)
     m_context = context;
 
     m_monitorCapability = std::make_unique<CpuMonitorCapability>();
-    m_panelCapability = std::make_unique<CpuPanelCapability>();
-    m_taskbarCapability = std::make_unique<CpuTaskbarCapability>(m_monitorCapability.get());
-    m_settingsCapability = std::make_unique<CpuSettingsCapability>();
+    m_panelCapability = std::make_unique<CpuPanelCapability>(context);
+    m_taskbarCapability = std::make_unique<CpuTaskbarCapability>(m_monitorCapability.get(), context);
+    m_settingsCapability = std::make_unique<CpuSettingsCapability>(context);
 
     if (!m_monitorCapability->initialize(context)) {
         shutdown();

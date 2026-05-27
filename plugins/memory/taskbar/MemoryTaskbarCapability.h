@@ -5,11 +5,12 @@
 namespace Vitals {
 
 class MemoryMonitorCapability;
+class IAppContext;
 
 class MemoryTaskbarCapability : public ITaskbarCapability
 {
 public:
-    explicit MemoryTaskbarCapability(const MemoryMonitorCapability* monitorCapability);
+    MemoryTaskbarCapability(const MemoryMonitorCapability* monitorCapability, IAppContext* context);
 
     QString displayText(const QHash<QString, MetricValue>& latestValues) const override;
     QString tooltip(const QHash<QString, MetricValue>& latestValues) const override;
@@ -17,7 +18,10 @@ public:
     TaskbarDetailContent detailContent(const QHash<QString, MetricValue>& latestValues) const override;
 
 private:
+    QString text(const QString& key, const QString& fallback) const;
+
     const MemoryMonitorCapability* m_monitorCapability = nullptr;
+    IAppContext* m_context = nullptr;
 };
 
 } // namespace Vitals

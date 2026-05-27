@@ -1,6 +1,7 @@
 #include "DashboardWidget.h"
 
 #include "CardWidget.h"
+#include "language/LanguageManager.h"
 #include "metric/MetricCenter.h"
 
 #include <QFrame>
@@ -35,8 +36,9 @@ QString formatBytes(double bytes)
 
 } // namespace
 
-DashboardWidget::DashboardWidget(QWidget* parent)
+DashboardWidget::DashboardWidget(LanguageManager* languageManager, QWidget* parent)
     : QWidget(parent)
+    , m_languageManager(languageManager)
 {
     auto* root = new QVBoxLayout(this);
     root->setContentsMargins(22, 18, 22, 20);
@@ -47,15 +49,15 @@ DashboardWidget::DashboardWidget(QWidget* parent)
     auto* header = new QHBoxLayout();
     header->setSpacing(12);
 
-    auto* title = new QLabel(QStringLiteral("Overview"), this);
-    title->setObjectName(QStringLiteral("pageTitle"));
-    title->setMinimumWidth(0);
-    title->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    m_titleLabel = new QLabel(text(QStringLiteral("dashboard.title"), QStringLiteral("Overview")), this);
+    m_titleLabel->setObjectName(QStringLiteral("pageTitle"));
+    m_titleLabel->setMinimumWidth(0);
+    m_titleLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
 
-    m_statusLabel = new QLabel(QStringLiteral("Waiting for metrics"), this);
+    m_statusLabel = new QLabel(text(QStringLiteral("dashboard.waitingMetrics"), QStringLiteral("Waiting for metrics")), this);
     m_statusLabel->setObjectName(QStringLiteral("statusPill"));
 
-    header->addWidget(title);
+    header->addWidget(m_titleLabel);
     header->addStretch();
     header->addWidget(m_statusLabel);
     root->addLayout(header);
@@ -77,7 +79,7 @@ DashboardWidget::DashboardWidget(QWidget* parent)
     m_groupLayout->setSpacing(10);
     m_groupLayout->setAlignment(Qt::AlignTop);
 
-    m_emptyLabel = new QLabel(QStringLiteral("Waiting for plugin metrics"), content);
+    m_emptyLabel = new QLabel(text(QStringLiteral("dashboard.empty"), QStringLiteral("Waiting for plugin metrics")), content);
     m_emptyLabel->setObjectName(QStringLiteral("panelBody"));
     m_emptyLabel->setAlignment(Qt::AlignCenter);
     m_groupLayout->addWidget(m_emptyLabel);
@@ -115,7 +117,7 @@ void DashboardWidget::updateFrame(const MetricFrame& frame)
     }
 
     updatePluginSummary(frame.pluginId);
-    m_statusLabel->setText(QStringLiteral("Live"));
+    m_statusLabel->setText(text(QStringLiteral("dashboard.live"), QStringLiteral("Live")));
     if (m_emptyLabel) {
         m_emptyLabel->hide();
     }
@@ -145,7 +147,7 @@ void DashboardWidget::removeMetric(const QString& key)
     }
 
     if (m_groups.isEmpty()) {
-        m_statusLabel->setText(QStringLiteral("Waiting for metrics"));
+        m_statusLabel->setText(text(QStringLiteral("dashboard.waitingMetrics"), QStringLiteral("Waiting for metrics")));
         if (m_emptyLabel) {
             m_emptyLabel->show();
         }
@@ -331,7 +333,7 @@ void DashboardWidget::updateGroupHeader(const QString& pluginId)
     group.toggleButton->setText(QStringLiteral("%1 %2").arg(marker, pluginTitle(pluginId)));
 
     const int metricCount = m_pluginMetrics.value(pluginId).size();
-    group.subtitleLabel->setText(QStringLiteral("%1 metrics").arg(metricCount));
+    group.subtitleLabel->setText(text(QStringLiteral("dashboard.metricCount"), QStringLiteral("%1 metrics")).arg(metricCount));
 }
 
 void DashboardWidget::updateMetricCard(CardWidget* card, const MetricValue& value)
@@ -350,10 +352,10 @@ void DashboardWidget::updateMetricCard(CardWidget* card, const MetricValue& valu
 
 QString DashboardWidget::pluginTitle(const QString& pluginId) const
 {
-    if (pluginId == QStringLiteral("com.vitals.cpu")) return QStringLiteral("CPU Monitor");
-    if (pluginId == QStringLiteral("com.vitals.memory")) return QStringLiteral("Memory Monitor");
-    if (pluginId == QStringLiteral("com.vitals.network")) return QStringLiteral("Network Monitor");
-    if (pluginId == QStringLiteral("com.vitals.systeminfo")) return QStringLiteral("System Info");
+    if (pluginId == QStringLiteral("com.vitals.cpu")) return text(QStringLiteral("plugin.com.vitals.cpu"), QStringLiteral("CPU Monitor"));
+    if (pluginId == QStringLiteral("com.vitals.memory")) return text(QStringLiteral("plugin.com.vitals.memory"), QStringLiteral("Memory Monitor"));
+    if (pluginId == QStringLiteral("com.vitals.network")) return text(QStringLiteral("plugin.com.vitals.network"), QStringLiteral("Network Monitor"));
+    if (pluginId == QStringLiteral("com.vitals.systeminfo")) return text(QStringLiteral("plugin.com.vitals.systeminfo"), QStringLiteral("System Info"));
     return pluginId;
 }
 
@@ -376,7 +378,7 @@ QString DashboardWidget::summaryHintForPlugin(const QString& pluginId) const
             peak = qMax(peak, pluginValues.value(QStringLiteral("cpu.usage.core%1").arg(index)).value.toDouble());
         }
         if (cores > 0) {
-            return QStringLiteral("%1 cores  |  Peak %2%")
+            return text(QStringLiteral("dashboard.coresPeak"), QStringLiteral("%1 cores | Peak %2%"))
                 .arg(cores)
                 .arg(peak, 0, 'f', 0);
         }
@@ -386,7 +388,7 @@ QString DashboardWidget::summaryHintForPlugin(const QString& pluginId) const
         const QString device = pluginValues.value(QStringLiteral("system.device.name")).value.toString();
         const qint64 uptime = pluginValues.value(QStringLiteral("system.uptime.seconds")).value.toLongLong();
         if (!device.isEmpty() && uptime > 0) {
-            return QStringLiteral("%1  |  Uptime %2h %3m")
+            return text(QStringLiteral("dashboard.uptime"), QStringLiteral("%1 | Uptime %2h %3m"))
                 .arg(device)
                 .arg(uptime / 3600)
                 .arg((uptime % 3600) / 60);
@@ -400,10 +402,10 @@ QString DashboardWidget::summaryHintForPlugin(const QString& pluginId) const
         const QString primary = pluginValues.value(QStringLiteral("network.interface.primary")).value.toString();
         const double up = pluginValues.value(QStringLiteral("network.upload.rate")).value.toDouble();
         if (!primary.isEmpty()) {
-            return QStringLiteral("%1  |  Up %2/s").arg(primary, formatBytes(up));
+            return text(QStringLiteral("dashboard.networkUpWithInterface"), QStringLiteral("%1 | Up %2/s")).arg(primary, formatBytes(up));
         }
         if (up > 0.0) {
-            return QStringLiteral("Up %1/s").arg(formatBytes(up));
+            return text(QStringLiteral("dashboard.networkUp"), QStringLiteral("Up %1/s")).arg(formatBytes(up));
         }
     }
 
@@ -411,7 +413,7 @@ QString DashboardWidget::summaryHintForPlugin(const QString& pluginId) const
         const quint64 used = pluginValues.value(QStringLiteral("memory.used.bytes")).value.toULongLong();
         const quint64 total = pluginValues.value(QStringLiteral("memory.total.bytes")).value.toULongLong();
         if (total > 0) {
-            return QStringLiteral("%1 of %2 used").arg(formatBytes(used), formatBytes(total));
+            return text(QStringLiteral("dashboard.memoryUsed"), QStringLiteral("%1 of %2 used")).arg(formatBytes(used), formatBytes(total));
         }
     }
 
@@ -419,41 +421,41 @@ QString DashboardWidget::summaryHintForPlugin(const QString& pluginId) const
     if (!values.isEmpty()) {
         return displayHintForMetric(values.first());
     }
-    return QStringLiteral("Plugin summary");
+    return text(QStringLiteral("dashboard.pluginSummary"), QStringLiteral("Plugin summary"));
 }
 
 QString DashboardWidget::displayTitleForMetric(const QString& key) const
 {
     if (key.startsWith(QStringLiteral("com.vitals."))) return pluginTitle(key);
-    if (key == QStringLiteral("framework.status")) return QStringLiteral("Framework");
-    if (key == QStringLiteral("cpu.usage.total")) return QStringLiteral("CPU");
-    if (key == QStringLiteral("cpu.logical.cores")) return QStringLiteral("Logical Cores");
-    if (key == QStringLiteral("cpu.model")) return QStringLiteral("Processor");
+    if (key == QStringLiteral("framework.status")) return text(QStringLiteral("metric.framework.status"), QStringLiteral("Framework"));
+    if (key == QStringLiteral("cpu.usage.total")) return text(QStringLiteral("metric.cpu.usage.total"), QStringLiteral("CPU"));
+    if (key == QStringLiteral("cpu.logical.cores")) return text(QStringLiteral("metric.cpu.logical.cores"), QStringLiteral("Logical Cores"));
+    if (key == QStringLiteral("cpu.model")) return text(QStringLiteral("metric.cpu.model"), QStringLiteral("Processor"));
     if (key.startsWith(QStringLiteral("cpu.usage.core"))) {
         bool ok = false;
         const int coreIndex = key.mid(QStringLiteral("cpu.usage.core").size()).toInt(&ok);
         if (ok) {
-            return QStringLiteral("Core %1").arg(coreIndex + 1);
+            return text(QStringLiteral("metric.cpu.usage.core"), QStringLiteral("Core %1")).arg(coreIndex + 1);
         }
     }
-    if (key == QStringLiteral("memory.usage.percent")) return QStringLiteral("Memory");
-    if (key == QStringLiteral("memory.total.bytes")) return QStringLiteral("Total Memory");
-    if (key == QStringLiteral("memory.used.bytes")) return QStringLiteral("Used Memory");
-    if (key == QStringLiteral("memory.free.bytes")) return QStringLiteral("Available Memory");
-    if (key == QStringLiteral("network.interface.primary")) return QStringLiteral("Primary Interface");
-    if (key == QStringLiteral("network.interfaces.active")) return QStringLiteral("Active Interfaces");
-    if (key == QStringLiteral("network.upload.speed")) return QStringLiteral("Upload");
-    if (key == QStringLiteral("network.download.speed")) return QStringLiteral("Download");
-    if (key == QStringLiteral("network.upload.rate")) return QStringLiteral("Upload");
-    if (key == QStringLiteral("network.download.rate")) return QStringLiteral("Download");
-    if (key == QStringLiteral("network.download.total.bytes")) return QStringLiteral("Total Received");
-    if (key == QStringLiteral("network.upload.total.bytes")) return QStringLiteral("Total Sent");
-    if (key == QStringLiteral("disk.read.speed")) return QStringLiteral("Disk Read");
-    if (key == QStringLiteral("disk.write.speed")) return QStringLiteral("Disk Write");
-    if (key == QStringLiteral("battery.level.percent")) return QStringLiteral("Battery");
-    if (key == QStringLiteral("system.memory.total.bytes")) return QStringLiteral("Memory");
-    if (key == QStringLiteral("system.gpu.model")) return QStringLiteral("GPU");
-    if (key == QStringLiteral("system.uptime.seconds")) return QStringLiteral("Uptime");
+    if (key == QStringLiteral("memory.usage.percent")) return text(QStringLiteral("metric.memory.usage.percent"), QStringLiteral("Memory"));
+    if (key == QStringLiteral("memory.total.bytes")) return text(QStringLiteral("metric.memory.total.bytes"), QStringLiteral("Total Memory"));
+    if (key == QStringLiteral("memory.used.bytes")) return text(QStringLiteral("metric.memory.used.bytes"), QStringLiteral("Used Memory"));
+    if (key == QStringLiteral("memory.free.bytes")) return text(QStringLiteral("metric.memory.free.bytes"), QStringLiteral("Available Memory"));
+    if (key == QStringLiteral("network.interface.primary")) return text(QStringLiteral("metric.network.interface.primary"), QStringLiteral("Primary Interface"));
+    if (key == QStringLiteral("network.interfaces.active")) return text(QStringLiteral("metric.network.interfaces.active"), QStringLiteral("Active Interfaces"));
+    if (key == QStringLiteral("network.upload.speed")) return text(QStringLiteral("metric.network.upload"), QStringLiteral("Upload"));
+    if (key == QStringLiteral("network.download.speed")) return text(QStringLiteral("metric.network.download"), QStringLiteral("Download"));
+    if (key == QStringLiteral("network.upload.rate")) return text(QStringLiteral("metric.network.upload"), QStringLiteral("Upload"));
+    if (key == QStringLiteral("network.download.rate")) return text(QStringLiteral("metric.network.download"), QStringLiteral("Download"));
+    if (key == QStringLiteral("network.download.total.bytes")) return text(QStringLiteral("metric.network.download.total.bytes"), QStringLiteral("Total Received"));
+    if (key == QStringLiteral("network.upload.total.bytes")) return text(QStringLiteral("metric.network.upload.total.bytes"), QStringLiteral("Total Sent"));
+    if (key == QStringLiteral("disk.read.speed")) return text(QStringLiteral("metric.disk.read.speed"), QStringLiteral("Disk Read"));
+    if (key == QStringLiteral("disk.write.speed")) return text(QStringLiteral("metric.disk.write.speed"), QStringLiteral("Disk Write"));
+    if (key == QStringLiteral("battery.level.percent")) return text(QStringLiteral("metric.battery.level.percent"), QStringLiteral("Battery"));
+    if (key == QStringLiteral("system.memory.total.bytes")) return text(QStringLiteral("metric.system.memory.total.bytes"), QStringLiteral("Memory"));
+    if (key == QStringLiteral("system.gpu.model")) return text(QStringLiteral("metric.system.gpu.model"), QStringLiteral("GPU"));
+    if (key == QStringLiteral("system.uptime.seconds")) return text(QStringLiteral("metric.system.uptime.seconds"), QStringLiteral("Uptime"));
     return key;
 }
 
@@ -485,7 +487,7 @@ QString DashboardWidget::displayValueForMetric(const MetricValue& value) const
 QString DashboardWidget::displayHintForMetric(const MetricValue& value) const
 {
     if (value.timestamp.isValid()) {
-        return QStringLiteral("Updated %1").arg(value.timestamp.toString(QStringLiteral("hh:mm:ss")));
+        return text(QStringLiteral("dashboard.updatedAt"), QStringLiteral("Updated %1")).arg(value.timestamp.toString(QStringLiteral("hh:mm:ss")));
     }
     return QStringLiteral("MetricCenter");
 }
@@ -508,6 +510,11 @@ int DashboardWidget::progressForMetric(const MetricValue& value) const
         return qRound(value.value.toDouble());
     }
     return -1;
+}
+
+QString DashboardWidget::text(const QString& key, const QString& fallback) const
+{
+    return m_languageManager ? m_languageManager->translate(key, fallback) : fallback;
 }
 
 } // namespace Vitals

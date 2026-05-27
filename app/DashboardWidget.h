@@ -14,6 +14,7 @@ class QFrame;
 namespace Vitals {
 
 class CardWidget;
+class LanguageManager;
 class MetricCenter;
 
 /**
@@ -37,7 +38,7 @@ class DashboardWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit DashboardWidget(QWidget* parent = nullptr);
+    explicit DashboardWidget(LanguageManager* languageManager, QWidget* parent = nullptr);
 
     /// Subscribes the dashboard to MetricCenter updates.
     void bindMetricCenter(MetricCenter* metricCenter);
@@ -80,13 +81,16 @@ private:
     QString displayHintForMetric(const MetricValue& value) const;
     QColor accentColorForMetric(const QString& key) const;
     int progressForMetric(const MetricValue& value) const;
+    QString text(const QString& key, const QString& fallback) const;
 
+    QLabel* m_titleLabel = nullptr;
     QLabel* m_statusLabel = nullptr;
     QVBoxLayout* m_groupLayout = nullptr;
     QLabel* m_emptyLabel = nullptr;
     QHash<QString, PluginGroup> m_groups;
     QHash<QString, QString> m_metricOwners;
     QHash<QString, QHash<QString, MetricValue>> m_pluginMetrics;
+    LanguageManager* m_languageManager = nullptr;
 };
 
 } // namespace Vitals

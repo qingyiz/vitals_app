@@ -7,6 +7,8 @@ add_library(VitalsCore STATIC
     metric/MetricRegistry.cpp
     config/ConfigManager.h
     config/ConfigManager.cpp
+    language/LanguageManager.h
+    language/LanguageManager.cpp
     event/EventBus.h
     event/EventBus.cpp
     log/Logger.h
@@ -24,4 +26,3 @@ target_link_libraries(VitalsCore
         Vitals::Sdk
         ${VITALS_QT_LIBS}
 )
-

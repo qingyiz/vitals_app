@@ -5,6 +5,7 @@
 namespace Vitals {
 
 class ConfigManager;
+class LanguageManager;
 class MetricCenter;
 
 /**
@@ -28,7 +29,7 @@ class AppContext : public IAppContext
 {
 public:
     /// Binds framework services that will be exposed through IAppContext.
-    AppContext(MetricCenter* metricCenter, ConfigManager* configManager);
+    AppContext(MetricCenter* metricCenter, ConfigManager* configManager, LanguageManager* languageManager);
 
     /// Returns the shared metric publication sink.
     IMetricSink* metricSink() const override;
@@ -36,9 +37,16 @@ public:
     /// Returns the resolved configuration path of a plugin.
     QString configPathForPlugin(const QString& pluginId) const override;
 
+    /// Resolves translated host/plugin UI text through the active language catalog.
+    QString translate(const QString& key, const QString& fallback = QString()) const override;
+
+    /// Returns the active language code.
+    QString currentLanguage() const override;
+
 private:
     MetricCenter* m_metricCenter = nullptr;
     ConfigManager* m_configManager = nullptr;
+    LanguageManager* m_languageManager = nullptr;
 };
 
 } // namespace Vitals

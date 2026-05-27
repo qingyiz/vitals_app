@@ -927,6 +927,28 @@ CPU 使用率
 
 任务栏显示也需要刷新节流，不应每个 Metric 更新都进行昂贵重绘。第一阶段可以先用轻量图标和 tooltip，后续再根据平台扩展更原生的实现。
 
+### 10.5 语言与本地化
+
+项目使用 `assets/languages/` 下的 JSON 文件管理宿主与插件的用户可见文案。
+
+基础规则：
+
+- `assets/languages/languages.json` 负责声明可选语言。
+- 每种语言一个 JSON 字典文件，例如 `en-US.json`、`zh-CN.json`。
+- 新增语言时，只需要新增语言 JSON 文件并在 `languages.json` 中登记。
+- 运行目录下的 `languages/` 优先生效，Qt Resource 中的语言文件作为兜底。
+- 当前语言由宿主配置 `config/app.json` 中的 `language` 字段持久化。
+
+宿主与插件规则：
+
+- 宿主 UI 文案通过 `LanguageManager::translate(key, fallback)` 获取。
+- 插件 UI 文案必须通过 `IAppContext::translate(key, fallback)` 获取。
+- 插件页面标题、副标题、区块标题、字段名、tile/badge 标签、设置项、空状态、任务栏/菜单栏标签与 tooltip 等用户可见静态文案，都必须走语言 key。
+- 插件不应在 QWidget、Capability、Taskbar、Settings 代码中直接硬编码英文或中文 UI 文案，除非该文案只是 `translate()` 的 fallback。
+- 操作系统采集返回的动态值不翻译，例如设备名、CPU 型号、GPU 型号、网卡名、文件路径、插件 ID。
+- 新增插件或新增插件页面时，必须同步补充 `en-US.json` 和 `zh-CN.json` 的翻译 key。
+- 翻译 key 推荐按模块分组，例如 `cpu.title`、`memory.usedMemory`、`network.currentThroughput`、`systemInfo.currentSnapshot`。
+
 ---
 
 ## 11. CMake 开发规范
@@ -1325,8 +1347,9 @@ MainWindow 负责 CPU、内存、网络采集
 9. 新增平台 API 时必须在 CMake 中正确链接对应系统库或 Framework。
 10. 修改 SDK 接口时必须考虑已有插件兼容性。
 11. 新增任务栏、托盘、系统通知等宿主平台能力时，必须放入宿主平台抽象层，并从 `MetricCenter` 读取数据，不要直接采集系统信息。
-12. 提交代码时，提交信息必须在同一个 `-m` 参数内同时包含英文和中文，英文在第一行、中文在第二行，且中英文语义保持一致。
-13. 修改插件状态时必须同步文档，包括但不限于 `README.md` 的插件状态表、`docs/` 下相关计划或开发说明，以及插件元信息中的 `supportedPlatforms` / capability 状态；不要让代码、插件 JSON 和文档描述长期不一致。
+12. 新增或修改用户可见 UI 文案时，必须通过 `assets/languages/` 的 JSON 字典维护；插件内部必须通过 `IAppContext::translate()` 使用语言 key。
+13. 提交代码时，提交信息必须在同一个 `-m` 参数内同时包含英文和中文，英文在第一行、中文在第二行，且中英文语义保持一致。
+14. 修改插件状态时必须同步文档，包括但不限于 `README.md` 的插件状态表、`docs/` 下相关计划或开发说明，以及插件元信息中的 `supportedPlatforms` / capability 状态；不要让代码、插件 JSON 和文档描述长期不一致。
 
 ---
 

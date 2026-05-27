@@ -13,6 +13,8 @@ public:
     QString rootPath() const;
     QString appConfigPath() const;
     QString pluginConfigPath(const QString& pluginId) const;
+    QString language() const;
+    bool setLanguage(const QString& languageCode);
     bool isPluginEnabled(const QString& pluginId, const QString& filePath) const;
     bool setPluginEnabled(const QString& pluginId, const QString& filePath, bool enabled);
     bool isPluginTaskbarEnabled(const QString& pluginId, const QString& filePath, bool defaultEnabled) const;
