@@ -60,6 +60,12 @@ target_link_libraries(VitalsApp
         ${VITALS_QT_LIBS}
 )
 
+add_custom_command(TARGET VitalsApp POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/assets/languages"
+        "$<TARGET_FILE_DIR:VitalsApp>/languages"
+)
+
 if(APPLE)
     target_link_libraries(VitalsApp PRIVATE "-framework Cocoa")
 endif()

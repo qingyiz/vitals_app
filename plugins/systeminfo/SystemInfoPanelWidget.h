@@ -6,6 +6,7 @@
 
 namespace Vitals {
 
+class IAppContext;
 class InfoPanelWidget;
 
 /**
@@ -22,7 +23,7 @@ class SystemInfoPanelWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit SystemInfoPanelWidget(QWidget* parent = nullptr);
+    explicit SystemInfoPanelWidget(IAppContext* context, QWidget* parent = nullptr);
 
     /**
      * \if ENGLISH
@@ -37,8 +38,10 @@ public:
 
 private:
     static QString formatBytes(quint64 bytes);
-    static QString formatUptime(qint64 seconds);
+    QString formatUptime(qint64 seconds) const;
+    QString text(const QString& key, const QString& fallback) const;
 
+    IAppContext* m_context = nullptr;
     InfoPanelWidget* m_infoPanel = nullptr;
 };
 

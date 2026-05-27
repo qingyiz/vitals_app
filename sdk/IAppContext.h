@@ -50,6 +50,35 @@ public:
      * \endif
      */
     virtual QString configPathForPlugin(const QString& pluginId) const = 0;
+
+    /**
+     * \if ENGLISH
+     * @brief Resolves a host or plugin translation key using the active language
+     *
+     * Plugins must use this entry point for user-facing static text instead of
+     * hard-coding English or Chinese strings in panels, settings pages, or
+     * taskbar/menu content.
+     * \endif
+     *
+     * \if CHINESE
+     * @brief 使用当前语言解析宿主或插件翻译 key
+     *
+     * 插件中的面板、设置页、任务栏/菜单内容等用户可见静态文案必须通过
+     * 该入口获取，不应直接硬编码英文或中文。
+     * \endif
+     */
+    virtual QString translate(const QString& key, const QString& fallback = QString()) const = 0;
+
+    /**
+     * \if ENGLISH
+     * @brief Returns the currently selected language code
+     * \endif
+     *
+     * \if CHINESE
+     * @brief 返回当前选择的语言代码
+     * \endif
+     */
+    virtual QString currentLanguage() const = 0;
 };
 
 } // namespace Vitals

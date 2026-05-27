@@ -1,5 +1,6 @@
 #include "taskbar/CpuTaskbarCapability.h"
 
+#include "IAppContext.h"
 #include "monitor/CpuMonitorCapability.h"
 
 #include <QStringList>
@@ -17,8 +18,9 @@ QString formatPercentCompact(double value)
 
 } // namespace
 
-CpuTaskbarCapability::CpuTaskbarCapability(const CpuMonitorCapability* monitorCapability)
+CpuTaskbarCapability::CpuTaskbarCapability(const CpuMonitorCapability* monitorCapability, IAppContext* context)
     : m_monitorCapability(monitorCapability)
+    , m_context(context)
 {
 }
 
@@ -50,10 +52,10 @@ QString CpuTaskbarCapability::tooltip(const QHash<QString, MetricValue>& latestV
 
     QStringList parts;
     if (!model.isEmpty()) parts.append(model);
-    if (coreCount > 0) parts.append(QStringLiteral("%1 logical cores").arg(coreCount));
-    parts.append(QStringLiteral("Total %1").arg(formatPercentCompact(totalUsage)));
+    if (coreCount > 0) parts.append(text(QStringLiteral("cpu.logicalCoresCount"), QStringLiteral("%1 logical cores")).arg(coreCount));
+    parts.append(text(QStringLiteral("cpu.totalCompact"), QStringLiteral("Total %1")).arg(formatPercentCompact(totalUsage)));
     if (busiestCoreIndex >= 0) {
-        parts.append(QStringLiteral("Peak Core %1 %2")
+        parts.append(text(QStringLiteral("cpu.peakCoreCompact"), QStringLiteral("Peak Core %1 %2"))
                          .arg(busiestCoreIndex + 1)
                          .arg(formatPercentCompact(busiestCoreUsage)));
     }
@@ -88,7 +90,7 @@ TaskbarDetailContent CpuTaskbarCapability::detailContent(const QHash<QString, Me
 
         if (index < 8) {
             coreRows.append({
-                QStringLiteral("Core %1").arg(index + 1),
+                text(QStringLiteral("cpu.core"), QStringLiteral("Core %1")).arg(index + 1),
                 formatPercentCompact(coreUsage),
                 QString(),
                 coreUsage,
@@ -98,22 +100,27 @@ TaskbarDetailContent CpuTaskbarCapability::detailContent(const QHash<QString, Me
     }
 
     TaskbarDetailContent content;
-    content.title = QStringLiteral("CPU Monitor");
+    content.title = text(QStringLiteral("cpu.title"), QStringLiteral("CPU Monitor"));
     content.subtitle = model;
-    content.primaryLabel = QStringLiteral("Total Load");
+    content.primaryLabel = text(QStringLiteral("cpu.totalLoad"), QStringLiteral("Total Load"));
     content.primaryValue = formatPercentCompact(totalUsage);
     content.accentColor = QStringLiteral("#ff453a");
     content.badges = {
-        {QStringLiteral("CORES"), coreCount > 0 ? QString::number(coreCount) : QStringLiteral("--")},
-        {QStringLiteral("PEAK CORE"), busiestCoreIndex >= 0
+        {text(QStringLiteral("cpu.coresUpper"), QStringLiteral("CORES")), coreCount > 0 ? QString::number(coreCount) : QStringLiteral("--")},
+        {text(QStringLiteral("cpu.peakCoreUpper"), QStringLiteral("PEAK CORE")), busiestCoreIndex >= 0
                 ? QStringLiteral("%1  %2").arg(busiestCoreIndex + 1).arg(formatPercentCompact(busiestCoreUsage))
                 : QStringLiteral("--")},
-        {QStringLiteral("INTERVAL"), QStringLiteral("%1s").arg((m_monitorCapability
+        {text(QStringLiteral("common.intervalUpper"), QStringLiteral("INTERVAL")), QStringLiteral("%1s").arg((m_monitorCapability
                     ? m_monitorCapability->intervalMs()
                     : 2000) / 1000.0, 0, 'f', 1)}
     };
-    content.sections.append({QStringLiteral("Per-Core Load"), coreRows});
+    content.sections.append({text(QStringLiteral("cpu.perCoreLoad"), QStringLiteral("Per-Core Load")), coreRows});
     return content;
+}
+
+QString CpuTaskbarCapability::text(const QString& key, const QString& fallback) const
+{
+    return m_context ? m_context->translate(key, fallback) : fallback;
 }
 
 } // namespace Vitals

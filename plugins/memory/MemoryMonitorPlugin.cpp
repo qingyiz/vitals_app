@@ -33,8 +33,8 @@ bool MemoryMonitorPlugin::initialize(IAppContext* context)
     m_context = context;
 
     m_monitorCapability = std::make_unique<MemoryMonitorCapability>();
-    m_panelCapability = std::make_unique<MemoryPanelCapability>();
-    m_taskbarCapability = std::make_unique<MemoryTaskbarCapability>(m_monitorCapability.get());
+    m_panelCapability = std::make_unique<MemoryPanelCapability>(context);
+    m_taskbarCapability = std::make_unique<MemoryTaskbarCapability>(m_monitorCapability.get(), context);
 
     if (!m_monitorCapability->initialize(context)) {
         shutdown();

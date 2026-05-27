@@ -1,10 +1,17 @@
 #include "settings/CpuSettingsCapability.h"
 
+#include "IAppContext.h"
+
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QWidget>
 
 namespace Vitals {
+
+CpuSettingsCapability::CpuSettingsCapability(IAppContext* context)
+    : m_context(context)
+{
+}
 
 QString CpuSettingsCapability::settingsId() const
 {
@@ -13,7 +20,7 @@ QString CpuSettingsCapability::settingsId() const
 
 QString CpuSettingsCapability::settingsTitle() const
 {
-    return QStringLiteral("CPU Monitor");
+    return text(QStringLiteral("cpu.title"), QStringLiteral("CPU Monitor"));
 }
 
 QWidget* CpuSettingsCapability::createSettingsWidget(QWidget* parent)
@@ -23,12 +30,17 @@ QWidget* CpuSettingsCapability::createSettingsWidget(QWidget* parent)
     layout->setContentsMargins(0, 0, 0, 0);
 
     auto* label = new QLabel(
-        QStringLiteral("CPU settings capability is wired and ready for future plugin-specific controls."),
+        text(QStringLiteral("cpu.settingsReady"), QStringLiteral("CPU settings capability is wired and ready for future plugin-specific controls.")),
         root);
     label->setWordWrap(true);
     layout->addWidget(label);
     layout->addStretch(1);
     return root;
+}
+
+QString CpuSettingsCapability::text(const QString& key, const QString& fallback) const
+{
+    return m_context ? m_context->translate(key, fallback) : fallback;
 }
 
 } // namespace Vitals

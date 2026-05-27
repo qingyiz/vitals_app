@@ -69,6 +69,11 @@ void CardWidget::setValueText(const QString& value)
     m_valueLabel->setToolTip(value);
 }
 
+void CardWidget::setTitleText(const QString& title)
+{
+    m_titleLabel->setText(title);
+}
+
 void CardWidget::setHintText(const QString& hint)
 {
     m_hintLabel->setText(hint);

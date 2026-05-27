@@ -1,5 +1,6 @@
 #include "taskbar/NetworkTaskbarCapability.h"
 
+#include "IAppContext.h"
 #include "monitor/NetworkMonitorCapability.h"
 
 #include <QStringList>
@@ -60,8 +61,9 @@ QString formatCompactBytes(quint64 bytes)
 
 } // namespace
 
-NetworkTaskbarCapability::NetworkTaskbarCapability(const NetworkMonitorCapability* monitorCapability)
+NetworkTaskbarCapability::NetworkTaskbarCapability(const NetworkMonitorCapability* monitorCapability, IAppContext* context)
     : m_monitorCapability(monitorCapability)
+    , m_context(context)
 {
 }
 
@@ -86,10 +88,10 @@ QString NetworkTaskbarCapability::tooltip(const QHash<QString, MetricValue>& lat
     const quint64 totalSent = latestValues.value(QStringLiteral("network.upload.total.bytes")).value.toULongLong();
 
     QStringList parts;
-    if (!primaryInterface.isEmpty()) parts.append(QStringLiteral("Primary %1").arg(primaryInterface));
+    if (!primaryInterface.isEmpty()) parts.append(text(QStringLiteral("network.primaryCompact"), QStringLiteral("Primary %1")).arg(primaryInterface));
     if (!activeInterfaces.isEmpty()) parts.append(activeInterfaces);
-    if (totalReceived > 0) parts.append(QStringLiteral("Down %1").arg(formatCompactBytes(totalReceived)));
-    if (totalSent > 0) parts.append(QStringLiteral("Up %1").arg(formatCompactBytes(totalSent)));
+    if (totalReceived > 0) parts.append(text(QStringLiteral("network.downCompact"), QStringLiteral("Down %1")).arg(formatCompactBytes(totalReceived)));
+    if (totalSent > 0) parts.append(text(QStringLiteral("network.upCompact"), QStringLiteral("Up %1")).arg(formatCompactBytes(totalSent)));
     return parts.join(QStringLiteral(" | "));
 }
 
@@ -113,38 +115,43 @@ TaskbarDetailContent NetworkTaskbarCapability::detailContent(const QHash<QString
     }
 
     TaskbarDetailContent content;
-    content.title = QStringLiteral("Network Monitor");
+    content.title = text(QStringLiteral("network.title"), QStringLiteral("Network Monitor"));
     content.subtitle = primaryInterface.isEmpty()
-        ? QStringLiteral("No active uplink")
+        ? text(QStringLiteral("network.noActiveUplink"), QStringLiteral("No active uplink"))
         : primaryInterface;
-    content.primaryLabel = QStringLiteral("Download");
+    content.primaryLabel = text(QStringLiteral("network.download"), QStringLiteral("Download"));
     content.primaryValue = formatCompactRate(downloadRate);
     content.accentColor = QStringLiteral("#30d158");
     content.badges = {
-        {QStringLiteral("UP"), formatCompactRate(uploadRate)},
-        {QStringLiteral("LINKS"), activeInterfaces.isEmpty() ? QStringLiteral("0")
+        {text(QStringLiteral("network.upUpper"), QStringLiteral("UP")), formatCompactRate(uploadRate)},
+        {text(QStringLiteral("network.linksUpper"), QStringLiteral("LINKS")), activeInterfaces.isEmpty() ? QStringLiteral("0")
                                                              : QString::number(activeInterfaces.split(QStringLiteral(", ")).size())},
-        {QStringLiteral("INTERVAL"), QStringLiteral("%1s").arg((m_monitorCapability
+        {text(QStringLiteral("common.intervalUpper"), QStringLiteral("INTERVAL")), QStringLiteral("%1s").arg((m_monitorCapability
                     ? m_monitorCapability->intervalMs()
                     : 2000) / 1000.0, 0, 'f', 1)}
     };
     content.sections.append({
-        QStringLiteral("Live Throughput"),
+        text(QStringLiteral("network.liveThroughput"), QStringLiteral("Live Throughput")),
         {
-            {QStringLiteral("Download"), formatCompactRate(downloadRate), QString(), qMin(downloadRate / (1024.0 * 1024.0 * 10.0), 1.0), QStringLiteral("#30d158")},
-            {QStringLiteral("Upload"), formatCompactRate(uploadRate), QString(), qMin(uploadRate / (1024.0 * 1024.0 * 10.0), 1.0), QStringLiteral("#0a84ff")}
+            {text(QStringLiteral("network.download"), QStringLiteral("Download")), formatCompactRate(downloadRate), QString(), qMin(downloadRate / (1024.0 * 1024.0 * 10.0), 1.0), QStringLiteral("#30d158")},
+            {text(QStringLiteral("network.upload"), QStringLiteral("Upload")), formatCompactRate(uploadRate), QString(), qMin(uploadRate / (1024.0 * 1024.0 * 10.0), 1.0), QStringLiteral("#0a84ff")}
         }
     });
     content.sections.append({
-        QStringLiteral("Traffic Counters"),
+        text(QStringLiteral("network.trafficCounters"), QStringLiteral("Traffic Counters")),
         {
-            {QStringLiteral("Primary Interface"), primaryInterface.isEmpty() ? QStringLiteral("--") : primaryInterface, QString(), -1.0, QString()},
-            {QStringLiteral("Active Interfaces"), activeInterfaces.isEmpty() ? QStringLiteral("--") : activeInterfaces, QString(), -1.0, QString()},
-            {QStringLiteral("Total Received"), formatCompactBytes(totalReceived), QString(), -1.0, QString()},
-            {QStringLiteral("Total Sent"), formatCompactBytes(totalSent), QString(), -1.0, QString()}
+            {text(QStringLiteral("network.primaryInterface"), QStringLiteral("Primary Interface")), primaryInterface.isEmpty() ? QStringLiteral("--") : primaryInterface, QString(), -1.0, QString()},
+            {text(QStringLiteral("network.activeInterfaces"), QStringLiteral("Active Interfaces")), activeInterfaces.isEmpty() ? QStringLiteral("--") : activeInterfaces, QString(), -1.0, QString()},
+            {text(QStringLiteral("network.totalReceived"), QStringLiteral("Total Received")), formatCompactBytes(totalReceived), QString(), -1.0, QString()},
+            {text(QStringLiteral("network.totalSent"), QStringLiteral("Total Sent")), formatCompactBytes(totalSent), QString(), -1.0, QString()}
         }
     });
     return content;
+}
+
+QString NetworkTaskbarCapability::text(const QString& key, const QString& fallback) const
+{
+    return m_context ? m_context->translate(key, fallback) : fallback;
 }
 
 } // namespace Vitals

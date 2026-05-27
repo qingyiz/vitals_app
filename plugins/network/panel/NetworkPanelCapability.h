@@ -8,10 +8,13 @@
 namespace Vitals {
 
 class NetworkPanelWidget;
+class IAppContext;
 
 class NetworkPanelCapability : public IPanelCapability
 {
 public:
+    explicit NetworkPanelCapability(IAppContext* context);
+
     QString panelId() const override;
     QString panelName() const override;
     QString panelIconKey() const override;
@@ -20,6 +23,7 @@ public:
     void updateSnapshot(const NetworkSnapshot& snapshot);
 
 private:
+    IAppContext* m_context = nullptr;
     NetworkSnapshot m_lastSnapshot;
     QPointer<NetworkPanelWidget> m_panel;
 };

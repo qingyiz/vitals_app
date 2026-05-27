@@ -4,12 +4,15 @@
 #include <QMainWindow>
 
 class QStackedWidget;
+class QComboBox;
+class QLabel;
 
 namespace Vitals {
 
 class AppContext;
 class ConfigManager;
 class DashboardWidget;
+class LanguageManager;
 class MetricCenter;
 class NavigationWidget;
 class PluginCenterWidget;
@@ -65,20 +68,32 @@ private:
     /// Applies the current host visual theme and widget stylesheet.
     void applyStyle();
 
+    /// Builds and wires the status-bar language selector.
+    void setupLanguageSelector();
+
+    /// Updates the language selector to match the active catalog.
+    void refreshLanguageSelector();
+
     /// Creates a consistent host-owned navigation icon from a semantic key.
     QIcon createNavigationIcon(const QString& iconKey) const;
 
     /// Removes all pages and rebuilds the host and plugin navigation entries.
     void rebuildPages(const QString& preferredPageId = QString());
 
+    QString text(const QString& key, const QString& fallback) const;
+    QString navigationTitleForPage(const QString& id, const QString& title) const;
+
     MetricCenter* m_metricCenter = nullptr;
     ConfigManager* m_configManager = nullptr;
+    LanguageManager* m_languageManager = nullptr;
     AppContext* m_appContext = nullptr;
     PluginManager* m_pluginManager = nullptr;
     TaskbarIndicator* m_taskbarIndicator = nullptr;
     PluginCenterWidget* m_pluginCenterPage = nullptr;
     NavigationWidget* m_navigation = nullptr;
     QStackedWidget* m_pages = nullptr;
+    QLabel* m_languageLabel = nullptr;
+    QComboBox* m_languageCombo = nullptr;
 };
 
 } // namespace Vitals

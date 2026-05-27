@@ -1,8 +1,14 @@
 #include "panel/NetworkPanelCapability.h"
 
+#include "IAppContext.h"
 #include "NetworkPanelWidget.h"
 
 namespace Vitals {
+
+NetworkPanelCapability::NetworkPanelCapability(IAppContext* context)
+    : m_context(context)
+{
+}
 
 QString NetworkPanelCapability::panelId() const
 {
@@ -11,7 +17,8 @@ QString NetworkPanelCapability::panelId() const
 
 QString NetworkPanelCapability::panelName() const
 {
-    return QStringLiteral("Network Monitor");
+    return m_context ? m_context->translate(QStringLiteral("nav.network"), QStringLiteral("Network"))
+                     : QStringLiteral("Network");
 }
 
 QString NetworkPanelCapability::panelIconKey() const
@@ -21,7 +28,7 @@ QString NetworkPanelCapability::panelIconKey() const
 
 QWidget* NetworkPanelCapability::createPanel(QWidget* parent)
 {
-    auto* panel = new NetworkPanelWidget(parent);
+    auto* panel = new NetworkPanelWidget(m_context, parent);
     panel->applySnapshot(m_lastSnapshot);
     m_panel = panel;
     return panel;

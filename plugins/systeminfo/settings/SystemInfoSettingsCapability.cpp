@@ -1,10 +1,17 @@
 #include "settings/SystemInfoSettingsCapability.h"
 
+#include "IAppContext.h"
+
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QWidget>
 
 namespace Vitals {
+
+SystemInfoSettingsCapability::SystemInfoSettingsCapability(IAppContext* context)
+    : m_context(context)
+{
+}
 
 QString SystemInfoSettingsCapability::settingsId() const
 {
@@ -13,7 +20,7 @@ QString SystemInfoSettingsCapability::settingsId() const
 
 QString SystemInfoSettingsCapability::settingsTitle() const
 {
-    return QStringLiteral("System Information");
+    return text(QStringLiteral("systemInfo.title"), QStringLiteral("System Information"));
 }
 
 QWidget* SystemInfoSettingsCapability::createSettingsWidget(QWidget* parent)
@@ -23,12 +30,17 @@ QWidget* SystemInfoSettingsCapability::createSettingsWidget(QWidget* parent)
     layout->setContentsMargins(0, 0, 0, 0);
 
     auto* label = new QLabel(
-        QStringLiteral("System information settings capability is wired and ready for future plugin-specific controls."),
+        text(QStringLiteral("systemInfo.settingsReady"), QStringLiteral("System information settings capability is wired and ready for future plugin-specific controls.")),
         root);
     label->setWordWrap(true);
     layout->addWidget(label);
     layout->addStretch(1);
     return root;
+}
+
+QString SystemInfoSettingsCapability::text(const QString& key, const QString& fallback) const
+{
+    return m_context ? m_context->translate(key, fallback) : fallback;
 }
 
 } // namespace Vitals

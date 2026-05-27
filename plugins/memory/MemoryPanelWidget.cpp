@@ -1,22 +1,25 @@
 #include "MemoryPanelWidget.h"
 
+#include "IAppContext.h"
 #include "InfoPanelWidget.h"
 
 #include <QVBoxLayout>
 
 namespace Vitals {
 
-MemoryPanelWidget::MemoryPanelWidget(QWidget* parent)
+MemoryPanelWidget::MemoryPanelWidget(IAppContext* context, QWidget* parent)
     : QWidget(parent)
+    , m_context(context)
 {
     auto* rootLayout = new QVBoxLayout(this);
     rootLayout->setContentsMargins(0, 0, 0, 0);
 
     m_infoPanel = new InfoPanelWidget(this);
-    m_infoPanel->setPageTitle(QStringLiteral("Memory Monitor"));
-    m_infoPanel->setPageSubtitle(QStringLiteral("Live physical memory usage snapshot from the active platform."));
-    m_infoPanel->setDetailsTitle(QStringLiteral("Current Memory"));
-    m_infoPanel->setHeroEyebrow(QStringLiteral("MEMORY"));
+    m_infoPanel->setPageTitle(text(QStringLiteral("memory.title"), QStringLiteral("Memory Monitor")));
+    m_infoPanel->setPageSubtitle(text(QStringLiteral("memory.subtitle"),
+        QStringLiteral("Live physical memory usage snapshot from the active platform.")));
+    m_infoPanel->setDetailsTitle(text(QStringLiteral("memory.currentMemory"), QStringLiteral("Current Memory")));
+    m_infoPanel->setHeroEyebrow(text(QStringLiteral("memory.memoryUpper"), QStringLiteral("MEMORY")));
 
     rootLayout->addWidget(m_infoPanel);
 }
@@ -29,27 +32,27 @@ void MemoryPanelWidget::applySnapshot(const MemorySnapshot& snapshot)
     const QString totalText = formatBytes(snapshot.totalBytes);
 
     m_infoPanel->setHeroTitle(usageText);
-    m_infoPanel->setHeroSubtitle(QStringLiteral("%1 used of %2").arg(usedText, totalText));
-    m_infoPanel->setHeroMeta(QStringLiteral("%1 available").arg(freeText));
+    m_infoPanel->setHeroSubtitle(text(QStringLiteral("memory.usedOfTotal"), QStringLiteral("%1 used of %2")).arg(usedText, totalText));
+    m_infoPanel->setHeroMeta(text(QStringLiteral("memory.available"), QStringLiteral("%1 available")).arg(freeText));
 
     m_infoPanel->setBadges({
-        {QStringLiteral("USED"), usedText},
-        {QStringLiteral("FREE"), freeText},
-        {QStringLiteral("TOTAL"), totalText}
+        {text(QStringLiteral("memory.usedUpper"), QStringLiteral("USED")), usedText},
+        {text(QStringLiteral("memory.freeUpper"), QStringLiteral("FREE")), freeText},
+        {text(QStringLiteral("memory.totalUpper"), QStringLiteral("TOTAL")), totalText}
     });
 
     m_infoPanel->setDetailsRows({
-        {QStringLiteral("Usage"), usageText},
-        {QStringLiteral("Used Memory"), usedText},
-        {QStringLiteral("Available Memory"), freeText},
-        {QStringLiteral("Total Memory"), totalText}
+        {text(QStringLiteral("memory.usage"), QStringLiteral("Usage")), usageText},
+        {text(QStringLiteral("memory.usedMemory"), QStringLiteral("Used Memory")), usedText},
+        {text(QStringLiteral("memory.availableMemory"), QStringLiteral("Available Memory")), freeText},
+        {text(QStringLiteral("memory.totalMemory"), QStringLiteral("Total Memory")), totalText}
     });
 
     m_infoPanel->setTiles({
-        {QStringLiteral("Usage"), usageText},
-        {QStringLiteral("Used"), usedText},
-        {QStringLiteral("Available"), freeText},
-        {QStringLiteral("Total"), totalText}
+        {text(QStringLiteral("memory.usage"), QStringLiteral("Usage")), usageText},
+        {text(QStringLiteral("memory.used"), QStringLiteral("Used")), usedText},
+        {text(QStringLiteral("memory.availableTile"), QStringLiteral("Available")), freeText},
+        {text(QStringLiteral("memory.total"), QStringLiteral("Total")), totalText}
     });
 }
 
@@ -73,6 +76,11 @@ QString MemoryPanelWidget::formatPercent(double value)
 {
     const double clamped = qBound(0.0, value, 100.0);
     return QStringLiteral("%1%").arg(clamped, 0, 'f', clamped >= 10.0 ? 0 : 1);
+}
+
+QString MemoryPanelWidget::text(const QString& key, const QString& fallback) const
+{
+    return m_context ? m_context->translate(key, fallback) : fallback;
 }
 
 } // namespace Vitals

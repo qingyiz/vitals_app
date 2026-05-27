@@ -1,5 +1,6 @@
 #include "taskbar/SystemInfoTaskbarCapability.h"
 
+#include "IAppContext.h"
 #include "monitor/SystemInfoMonitorCapability.h"
 
 #include <QStringList>
@@ -39,8 +40,9 @@ QString formatUptimeVerbose(qint64 seconds)
 
 } // namespace
 
-SystemInfoTaskbarCapability::SystemInfoTaskbarCapability(const SystemInfoMonitorCapability* monitorCapability)
+SystemInfoTaskbarCapability::SystemInfoTaskbarCapability(const SystemInfoMonitorCapability* monitorCapability, IAppContext* context)
     : m_monitorCapability(monitorCapability)
+    , m_context(context)
 {
 }
 
@@ -95,36 +97,41 @@ TaskbarDetailContent SystemInfoTaskbarCapability::detailContent(const QHash<QStr
     }
 
     TaskbarDetailContent content;
-    content.title = QStringLiteral("System Information");
+    content.title = text(QStringLiteral("systemInfo.title"), QStringLiteral("System Information"));
     content.subtitle = os;
-    content.primaryLabel = QStringLiteral("Device");
+    content.primaryLabel = text(QStringLiteral("systemInfo.device"), QStringLiteral("Device"));
     content.primaryValue = device.isEmpty() ? QStringLiteral("Vitals") : device;
     content.accentColor = QStringLiteral("#64d2ff");
 
     content.badges = {
-        {QStringLiteral("MEMORY"), memory > 0 ? formatMemoryCompact(memory) : QStringLiteral("--")},
-        {QStringLiteral("UPTIME"), uptime > 0 ? formatUptimeCompact(uptime) : QStringLiteral("--")},
-        {QStringLiteral("INTERVAL"), QStringLiteral("%1s").arg((m_monitorCapability
+        {text(QStringLiteral("systemInfo.memoryUpper"), QStringLiteral("MEMORY")), memory > 0 ? formatMemoryCompact(memory) : QStringLiteral("--")},
+        {text(QStringLiteral("systemInfo.uptimeUpper"), QStringLiteral("UPTIME")), uptime > 0 ? formatUptimeCompact(uptime) : QStringLiteral("--")},
+        {text(QStringLiteral("common.intervalUpper"), QStringLiteral("INTERVAL")), QStringLiteral("%1s").arg((m_monitorCapability
                     ? m_monitorCapability->intervalMs()
                     : 5000) / 1000.0, 0, 'f', 1)}
     };
 
     content.sections.append({
-        QStringLiteral("Hardware"),
+        text(QStringLiteral("systemInfo.hardware"), QStringLiteral("Hardware")),
         {
-            {QStringLiteral("CPU"), cpu.isEmpty() ? QStringLiteral("--") : cpu, QString(), -1.0, QString()},
-            {QStringLiteral("GPU"), gpu.isEmpty() ? QStringLiteral("--") : gpu, QString(), -1.0, QString()},
-            {QStringLiteral("Memory"), memory > 0 ? formatMemoryCompact(memory) : QStringLiteral("--"), QString(), -1.0, QString()}
+            {text(QStringLiteral("systemInfo.cpu"), QStringLiteral("CPU")), cpu.isEmpty() ? QStringLiteral("--") : cpu, QString(), -1.0, QString()},
+            {text(QStringLiteral("systemInfo.gpu"), QStringLiteral("GPU")), gpu.isEmpty() ? QStringLiteral("--") : gpu, QString(), -1.0, QString()},
+            {text(QStringLiteral("systemInfo.memory"), QStringLiteral("Memory")), memory > 0 ? formatMemoryCompact(memory) : QStringLiteral("--"), QString(), -1.0, QString()}
         }
     });
     content.sections.append({
-        QStringLiteral("System"),
+        text(QStringLiteral("systemInfo.system"), QStringLiteral("System")),
         {
-            {QStringLiteral("Operating System"), os.isEmpty() ? QStringLiteral("--") : os, QString(), -1.0, QString()},
-            {QStringLiteral("Uptime"), uptime > 0 ? formatUptimeVerbose(uptime) : QStringLiteral("--"), QString(), -1.0, QString()}
+            {text(QStringLiteral("systemInfo.operatingSystem"), QStringLiteral("Operating System")), os.isEmpty() ? QStringLiteral("--") : os, QString(), -1.0, QString()},
+            {text(QStringLiteral("systemInfo.uptime"), QStringLiteral("Uptime")), uptime > 0 ? formatUptimeVerbose(uptime) : QStringLiteral("--"), QString(), -1.0, QString()}
         }
     });
     return content;
+}
+
+QString SystemInfoTaskbarCapability::text(const QString& key, const QString& fallback) const
+{
+    return m_context ? m_context->translate(key, fallback) : fallback;
 }
 
 } // namespace Vitals

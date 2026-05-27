@@ -1,8 +1,14 @@
 #include "panel/SystemInfoPanelCapability.h"
 
+#include "IAppContext.h"
 #include "SystemInfoPanelWidget.h"
 
 namespace Vitals {
+
+SystemInfoPanelCapability::SystemInfoPanelCapability(IAppContext* context)
+    : m_context(context)
+{
+}
 
 QString SystemInfoPanelCapability::panelId() const
 {
@@ -11,7 +17,8 @@ QString SystemInfoPanelCapability::panelId() const
 
 QString SystemInfoPanelCapability::panelName() const
 {
-    return QStringLiteral("System Info");
+    return m_context ? m_context->translate(QStringLiteral("nav.systemInfo"), QStringLiteral("System Info"))
+                     : QStringLiteral("System Info");
 }
 
 QString SystemInfoPanelCapability::panelIconKey() const
@@ -21,7 +28,7 @@ QString SystemInfoPanelCapability::panelIconKey() const
 
 QWidget* SystemInfoPanelCapability::createPanel(QWidget* parent)
 {
-    auto* panel = new SystemInfoPanelWidget(parent);
+    auto* panel = new SystemInfoPanelWidget(m_context, parent);
     panel->applySnapshot(m_lastSnapshot);
     m_panel = panel;
     return panel;

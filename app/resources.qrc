@@ -2,4 +2,9 @@
     <qresource prefix="/icons">
         <file alias="app-icon.svg">../assets/app-icon.svg</file>
     </qresource>
+    <qresource prefix="/languages">
+        <file alias="languages.json">../assets/languages/languages.json</file>
+        <file alias="en-US.json">../assets/languages/en-US.json</file>
+        <file alias="zh-CN.json">../assets/languages/zh-CN.json</file>
+    </qresource>
 </RCC>

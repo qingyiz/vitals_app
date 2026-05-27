@@ -16,6 +16,7 @@ class CardWidget : public QFrame
 public:
     explicit CardWidget(const QString& title, QWidget* parent = nullptr);
 
+    void setTitleText(const QString& title);
     void setValueText(const QString& value);
     void setHintText(const QString& hint);
     void setAccentColor(const QColor& color);

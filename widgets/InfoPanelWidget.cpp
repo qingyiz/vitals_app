@@ -13,6 +13,8 @@ namespace Vitals {
 
 namespace {
 
+constexpr int BottomSafeAreaPx = 88;
+
 QLabel* createSelectableLabel(QWidget* parent, const QString& objectName)
 {
     auto* label = new QLabel(parent);
@@ -43,7 +45,7 @@ InfoPanelWidget::InfoPanelWidget(QWidget* parent)
 
     auto* content = new QWidget(scrollArea);
     auto* contentLayout = new QVBoxLayout(content);
-    contentLayout->setContentsMargins(22, 18, 22, 20);
+    contentLayout->setContentsMargins(22, 18, 22, BottomSafeAreaPx);
     contentLayout->setSpacing(10);
 
     m_pageTitleLabel = new QLabel(content);
