@@ -19,11 +19,11 @@ PluginMetaInfo SystemInfoPlugin::metaInfo() const
     return {
         QStringLiteral("com.vitals.systeminfo"),
         QStringLiteral("System Information"),
-        QStringLiteral("macOS system identity and host information plugin."),
+        QStringLiteral("Cross-platform system identity and host information plugin."),
         QStringLiteral("0.1.0"),
         QStringLiteral("Vitals"),
         QStringLiteral("monitor"),
-        {QStringLiteral("macos")},
+        {QStringLiteral("macos"), QStringLiteral("windows")},
         QStringLiteral("0.1.0"),
         true
     };

@@ -42,6 +42,9 @@ public:
     /// Subscribes the dashboard to MetricCenter updates.
     void bindMetricCenter(MetricCenter* metricCenter);
 
+protected:
+    void resizeEvent(QResizeEvent* event) override;
+
 private Q_SLOTS:
     /// Re-renders one plugin summary when a metric frame changes.
     void updateFrame(const Vitals::MetricFrame& frame);
@@ -65,6 +68,7 @@ private:
     CardWidget* ensureMetricCard(const QString& pluginId, const QString& metricKey);
     void removePluginGroup(const QString& pluginId);
     void relayoutMetricCards(PluginGroup& group);
+    int detailColumnCount(const PluginGroup& group) const;
     void updatePluginSummary(const QString& pluginId);
     void updateGroupHeader(const QString& pluginId);
     void updateMetricCard(CardWidget* card, const MetricValue& value);

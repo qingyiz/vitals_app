@@ -33,6 +33,9 @@ PluginCenterWidget::PluginCenterWidget(ConfigManager* configManager, QWidget* pa
     : QWidget(parent)
     , m_configManager(configManager)
 {
+    setMinimumSize(0, 0);
+    setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+
     auto* rootLayout = new QVBoxLayout(this);
     rootLayout->setContentsMargins(22, 18, 22, 20);
     rootLayout->setSpacing(10);
@@ -47,17 +50,23 @@ PluginCenterWidget::PluginCenterWidget(ConfigManager* configManager, QWidget* pa
     auto* scrollArea = new QScrollArea(this);
     scrollArea->setWidgetResizable(true);
     scrollArea->setFrameShape(QFrame::NoFrame);
-    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setMinimumSize(0, 0);
+    scrollArea->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
 
     auto* cardsContainer = new QWidget(scrollArea);
+    cardsContainer->setMinimumWidth(560);
+    cardsContainer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     m_cardsLayout = new QVBoxLayout(cardsContainer);
     m_cardsLayout->setContentsMargins(0, 0, 0, 0);
     m_cardsLayout->setSpacing(8);
     m_cardsLayout->setAlignment(Qt::AlignTop);
 
+    scrollArea->setWidget(cardsContainer);
+
     rootLayout->addWidget(title);
     rootLayout->addWidget(m_summaryLabel);
-    scrollArea->setWidget(cardsContainer);
     rootLayout->addWidget(scrollArea, 1);
 }
 
@@ -91,17 +100,21 @@ void PluginCenterWidget::setPluginInfos(const QList<PluginRuntimeInfo>& pluginIn
         .arg(failedCount));
 
     if (pluginInfos.isEmpty()) {
-        auto* empty = new QLabel(QStringLiteral("No plugin binaries were discovered in the runtime plugins directory."), this);
+        auto* empty = new QLabel(QStringLiteral("No plugin binaries were discovered in the runtime plugins directory."), nullptr);
         empty->setObjectName(QStringLiteral("panelBody"));
         empty->setWordWrap(true);
         m_cardsLayout->addWidget(empty);
     }
+
+    m_cardsLayout->addStretch(1);
 }
 
 QWidget* PluginCenterWidget::createPluginCard(const PluginRuntimeInfo& pluginInfo)
 {
     auto* card = new QFrame(this);
     card->setObjectName(QStringLiteral("emptyPanel"));
+    card->setMinimumSize(560, 132);
+    card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
 
     auto* layout = new QVBoxLayout(card);
     layout->setContentsMargins(14, 11, 14, 12);
@@ -117,6 +130,8 @@ QWidget* PluginCenterWidget::createPluginCard(const PluginRuntimeInfo& pluginInf
     auto* title = new QLabel(pluginName, card);
     title->setObjectName(QStringLiteral("panelTitle"));
     title->setWordWrap(true);
+    title->setMinimumWidth(120);
+    title->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
     auto* toggleContainer = new QWidget(card);
     auto* toggleLayout = new QHBoxLayout(toggleContainer);

@@ -10,6 +10,7 @@
 #include <QHash>
 #include <QList>
 #include <QObject>
+#include <QRect>
 #include <QStringList>
 
 class QAction;
@@ -137,6 +138,12 @@ protected:
     /// Returns the maximum number of characters that should be rendered visibly.
     virtual int maximumVisibleLabelLength() const;
 
+    /// Returns whether plugin text should be rendered into the tray icon itself.
+    virtual bool usesDynamicTrayIcon() const;
+
+    /// Returns whether the system tray icon should own the detail context menu.
+    virtual bool usesTrayContextMenu() const;
+
     /// Returns the host window associated with this indicator.
     QWidget* mainWindow() const;
 
@@ -156,6 +163,7 @@ protected:
 
     /// Returns structured detail content for the current menu snapshot.
     QList<TaskbarDetailContent> currentDetailContents() const;
+    void showDetailMenuNear(const QRect& anchorRect);
     QString labelForDisplay(const TaskbarPluginDisplay& display, const QHash<QString, MetricValue>& latestValues) const;
     QString tooltipForDisplay(const TaskbarPluginDisplay& display, const QHash<QString, MetricValue>& latestValues) const;
     TaskbarDetailContent detailContentForDisplay(const TaskbarPluginDisplay& display, const QHash<QString, MetricValue>& latestValues) const;

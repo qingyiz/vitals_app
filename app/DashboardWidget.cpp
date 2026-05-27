@@ -8,7 +8,9 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QResizeEvent>
 #include <QScrollArea>
+#include <QSizePolicy>
 #include <QVBoxLayout>
 #include <QVariant>
 
@@ -39,12 +41,16 @@ DashboardWidget::DashboardWidget(QWidget* parent)
     auto* root = new QVBoxLayout(this);
     root->setContentsMargins(22, 18, 22, 20);
     root->setSpacing(12);
+    setMinimumSize(0, 0);
+    setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
 
     auto* header = new QHBoxLayout();
     header->setSpacing(12);
 
     auto* title = new QLabel(QStringLiteral("Overview"), this);
     title->setObjectName(QStringLiteral("pageTitle"));
+    title->setMinimumWidth(0);
+    title->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
 
     m_statusLabel = new QLabel(QStringLiteral("Waiting for metrics"), this);
     m_statusLabel->setObjectName(QStringLiteral("statusPill"));
@@ -57,9 +63,15 @@ DashboardWidget::DashboardWidget(QWidget* parent)
     auto* scrollArea = new QScrollArea(this);
     scrollArea->setWidgetResizable(true);
     scrollArea->setFrameShape(QFrame::NoFrame);
-    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setMinimumSize(0, 0);
+    scrollArea->viewport()->setMinimumSize(0, 0);
+    scrollArea->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
 
     auto* content = new QWidget(scrollArea);
+    content->setMinimumSize(0, 0);
+    content->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
     m_groupLayout = new QVBoxLayout(content);
     m_groupLayout->setContentsMargins(0, 0, 0, 0);
     m_groupLayout->setSpacing(10);
@@ -80,6 +92,14 @@ void DashboardWidget::bindMetricCenter(MetricCenter* metricCenter)
         this, &DashboardWidget::updateFrame);
     connect(metricCenter, &MetricCenter::metricRemoved,
         this, &DashboardWidget::removeMetric);
+}
+
+void DashboardWidget::resizeEvent(QResizeEvent* event)
+{
+    QWidget::resizeEvent(event);
+    for (auto it = m_groups.begin(); it != m_groups.end(); ++it) {
+        relayoutMetricCards(it.value());
+    }
 }
 
 void DashboardWidget::updateFrame(const MetricFrame& frame)
@@ -141,6 +161,8 @@ DashboardWidget::PluginGroup& DashboardWidget::ensurePluginGroup(const QString& 
 
     group.container = new QFrame(this);
     group.container->setObjectName(QStringLiteral("dashboardPluginGroup"));
+    group.container->setMinimumWidth(300);
+    group.container->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     group.container->setStyleSheet(QStringLiteral(R"(
         QFrame#dashboardPluginGroup {
             background: rgba(255, 255, 255, 0.70);
@@ -170,18 +192,25 @@ DashboardWidget::PluginGroup& DashboardWidget::ensurePluginGroup(const QString& 
     group.toggleButton->setCheckable(true);
     group.toggleButton->setChecked(false);
     group.toggleButton->setCursor(Qt::PointingHandCursor);
+    group.toggleButton->setMinimumWidth(0);
+    group.toggleButton->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
 
     group.subtitleLabel = new QLabel(group.container);
     group.subtitleLabel->setObjectName(QStringLiteral("panelBody"));
+    group.subtitleLabel->setMinimumWidth(0);
+    group.subtitleLabel->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
 
     header->addWidget(group.toggleButton, 1);
     header->addWidget(group.subtitleLabel);
     groupLayout->addLayout(header);
 
     group.summaryCard = new CardWidget(pluginTitle(pluginId), group.container);
+    group.summaryCard->setMinimumWidth(260);
     groupLayout->addWidget(group.summaryCard);
 
     group.detailsContainer = new QWidget(group.container);
+    group.detailsContainer->setMinimumWidth(260);
+    group.detailsContainer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     group.detailsGrid = new QGridLayout(group.detailsContainer);
     group.detailsGrid->setContentsMargins(0, 0, 0, 0);
     group.detailsGrid->setHorizontalSpacing(10);
@@ -233,11 +262,28 @@ void DashboardWidget::relayoutMetricCards(PluginGroup& group)
     int index = 0;
     QStringList keys = group.metricCards.keys();
     keys.sort();
+    const int columns = detailColumnCount(group);
+    for (int column = 0; column < 3; ++column) {
+        group.detailsGrid->setColumnStretch(column, column < columns ? 1 : 0);
+        group.detailsGrid->setColumnMinimumWidth(column, column < columns ? 260 : 0);
+    }
     for (const QString& key : keys) {
         CardWidget* card = group.metricCards.value(key);
-        group.detailsGrid->addWidget(card, index / 3, index % 3);
+        group.detailsGrid->addWidget(card, index / columns, index % columns);
         ++index;
     }
+}
+
+int DashboardWidget::detailColumnCount(const PluginGroup& group) const
+{
+    const int availableWidth = group.detailsContainer ? group.detailsContainer->width() : this->width();
+    if (availableWidth < 460) {
+        return 1;
+    }
+    if (availableWidth < 760) {
+        return 2;
+    }
+    return 3;
 }
 
 void DashboardWidget::updatePluginSummary(const QString& pluginId)

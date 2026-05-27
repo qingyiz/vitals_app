@@ -9,11 +9,13 @@
 #include <QDebug>
 #include <QFontDatabase>
 #include <QFontMetrics>
+#include <QGuiApplication>
 #include <QMenu>
 #include <QPalette>
 #include <QPainter>
 #include <QPixmap>
 #include <QRectF>
+#include <QScreen>
 #include <QSystemTrayIcon>
 #include <QWidgetAction>
 #include <QtMath>
@@ -213,13 +215,16 @@ void TaskbarIndicator::initialize(QWidget* mainWindow)
     }
 
     m_menu = new QMenu(m_mainWindow);
+    m_menu->setStyleSheet(QStringLiteral("QMenu { padding: 0px; margin: 0px; }"));
     m_detailWidget = new TaskbarMenuDetailWidget(m_menu);
     m_detailAction = new QWidgetAction(m_menu);
     m_detailAction->setDefaultWidget(m_detailWidget);
     m_menu->addAction(m_detailAction);
 
     m_trayIcon = new QSystemTrayIcon(this);
-    m_trayIcon->setContextMenu(m_menu);
+    if (usesTrayContextMenu()) {
+        m_trayIcon->setContextMenu(m_menu);
+    }
     m_trayIcon->setToolTip(QStringLiteral("Vitals %1").arg(platformName()));
     m_trayIcon->setIcon(buildIcon(idleText()));
     connect(m_trayIcon, &QSystemTrayIcon::activated, this,
@@ -350,6 +355,16 @@ int TaskbarIndicator::maximumVisibleLabelLength() const
     return 3;
 }
 
+bool TaskbarIndicator::usesDynamicTrayIcon() const
+{
+    return true;
+}
+
+bool TaskbarIndicator::usesTrayContextMenu() const
+{
+    return true;
+}
+
 QWidget* TaskbarIndicator::mainWindow() const
 {
     return m_mainWindow;
@@ -397,6 +412,35 @@ QList<TaskbarDetailContent> TaskbarIndicator::currentDetailContents() const
     }
 
     return contents;
+}
+
+void TaskbarIndicator::showDetailMenuNear(const QRect& anchorRect)
+{
+    if (!m_menu || !hasPluginDisplays()) {
+        return;
+    }
+
+    if (m_detailWidget) {
+        m_detailWidget->setContents(currentDetailContents());
+    }
+
+    const QSize menuSize = m_menu->sizeHint();
+    QPoint popupPos(anchorRect.center().x() - menuSize.width() / 2,
+        anchorRect.top() - menuSize.height() - 6);
+
+    QRect screenBounds;
+    if (QScreen* screen = QGuiApplication::screenAt(anchorRect.center())) {
+        screenBounds = screen->availableGeometry();
+    }
+    if (screenBounds.isValid()) {
+        if (popupPos.y() < screenBounds.top()) {
+            popupPos.setY(anchorRect.bottom() + 6);
+        }
+        popupPos.setX(qBound(screenBounds.left(), popupPos.x(), screenBounds.right() - menuSize.width() + 1));
+        popupPos.setY(qBound(screenBounds.top(), popupPos.y(), screenBounds.bottom() - menuSize.height() + 1));
+    }
+
+    m_menu->popup(popupPos);
 }
 
 QString TaskbarIndicator::labelForDisplay(
@@ -532,7 +576,9 @@ void TaskbarIndicator::refresh()
 
     const QString label = currentLabel();
     const QString tooltip = currentTooltip();
-    m_trayIcon->setIcon(buildIcon(label));
+    m_trayIcon->setIcon(usesDynamicTrayIcon()
+        ? buildIcon(label)
+        : QApplication::windowIcon());
     m_trayIcon->setToolTip(tooltip);
     if (!m_trayIcon->isVisible()) {
         m_trayIcon->show();

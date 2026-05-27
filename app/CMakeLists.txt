@@ -21,19 +21,25 @@ add_executable(VitalsApp
     platform/taskbar/TaskbarIndicatorFactory.cpp
 )
 
-target_sources(VitalsApp
-    PRIVATE
-        platform/taskbar/WindowsTaskbarIndicator.h
-        platform/taskbar/WindowsTaskbarIndicator.cpp
-        platform/taskbar/LinuxTaskbarIndicator.h
-        platform/taskbar/LinuxTaskbarIndicator.cpp
-)
-
-if(APPLE)
+if(WIN32)
+    target_sources(VitalsApp
+        PRIVATE
+            platform/taskbar/WindowsTaskbarIndicator.h
+            platform/taskbar/WindowsTaskbarIndicator.cpp
+            platform/taskbar/WindowsTaskbarOverlayWidget.h
+            platform/taskbar/WindowsTaskbarOverlayWidget.cpp
+    )
+elseif(APPLE)
     target_sources(VitalsApp
         PRIVATE
             platform/taskbar/MacTaskbarIndicator.h
             platform/taskbar/MacTaskbarIndicator.mm
+    )
+else()
+    target_sources(VitalsApp
+        PRIVATE
+            platform/taskbar/LinuxTaskbarIndicator.h
+            platform/taskbar/LinuxTaskbarIndicator.cpp
     )
 endif()
 
@@ -56,4 +62,8 @@ target_link_libraries(VitalsApp
 
 if(APPLE)
     target_link_libraries(VitalsApp PRIVATE "-framework Cocoa")
+endif()
+
+if(WIN32)
+    target_link_libraries(VitalsApp PRIVATE shell32 user32)
 endif()
