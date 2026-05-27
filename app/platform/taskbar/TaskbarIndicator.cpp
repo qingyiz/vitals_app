@@ -416,14 +416,21 @@ QList<TaskbarDetailContent> TaskbarIndicator::currentDetailContents() const
 
 void TaskbarIndicator::showDetailMenuNear(const QRect& anchorRect)
 {
+    showDetailMenuNear(currentDetailContents(), anchorRect);
+}
+
+void TaskbarIndicator::showDetailMenuNear(const QList<TaskbarDetailContent>& contents, const QRect& anchorRect)
+{
     if (!m_menu || !hasPluginDisplays()) {
         return;
     }
 
     if (m_detailWidget) {
-        m_detailWidget->setContents(currentDetailContents());
+        m_detailWidget->setContents(contents);
+        m_detailWidget->adjustSize();
     }
 
+    m_menu->adjustSize();
     const QSize menuSize = m_menu->sizeHint();
     QPoint popupPos(anchorRect.center().x() - menuSize.width() / 2,
         anchorRect.top() - menuSize.height() - 6);
@@ -586,9 +593,6 @@ void TaskbarIndicator::refresh()
 
     if (m_summaryAction) {
         m_summaryAction->setText(tooltip.split(QStringLiteral("\n")).join(QStringLiteral("  |  ")));
-    }
-    if (m_detailWidget) {
-        m_detailWidget->setContents(currentDetailContents());
     }
 }
 

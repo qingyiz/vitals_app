@@ -11,18 +11,13 @@ WindowsTaskbarIndicator::WindowsTaskbarIndicator(QObject* parent)
 
 WindowsTaskbarIndicator::~WindowsTaskbarIndicator()
 {
-    delete m_overlayWidget;
+    qDeleteAll(m_overlayWidgets);
+    m_overlayWidgets.clear();
 }
 
 void WindowsTaskbarIndicator::initialize(QWidget* mainWindow)
 {
     TaskbarIndicator::initialize(mainWindow);
-
-    if (!m_overlayWidget) {
-        m_overlayWidget = new WindowsTaskbarOverlayWidget();
-        connect(m_overlayWidget, &WindowsTaskbarOverlayWidget::detailRequested,
-            this, &WindowsTaskbarIndicator::showDetailMenuNear);
-    }
     refresh();
 }
 
@@ -55,59 +50,90 @@ void WindowsTaskbarIndicator::refresh()
 {
     TaskbarIndicator::refresh();
 
-    if (!m_overlayWidget) {
+    if (!hasPluginDisplays()) {
+        for (WindowsTaskbarOverlayWidget* widget : m_overlayWidgets) {
+            widget->hideFromTaskbar();
+        }
         return;
     }
 
-    const QString text = overlayText();
-    if (!hasPluginDisplays() || text.isEmpty()) {
-        m_overlayWidget->hideFromTaskbar();
-        return;
-    }
+    rebuildOverlayWidgets();
 
-    m_overlayWidget->setDisplayText(text);
-    m_overlayWidget->setDisplayTooltip(currentTooltip());
-    m_overlayWidget->showInTaskbar();
+    int anchorOffsetPx = 2;
+    const QList<TaskbarPluginDisplay> displays = pluginDisplays();
+    const int count = qMin(displays.size(), m_overlayWidgets.size());
+    for (int index = 0; index < count; ++index) {
+        WindowsTaskbarOverlayWidget* widget = m_overlayWidgets.at(index);
+        const TaskbarPluginDisplay& display = displays.at(index);
+        const QString text = overlayTextForDisplay(display);
+        if (text.isEmpty()) {
+            widget->hideFromTaskbar();
+            continue;
+        }
+
+        widget->setDisplayText(text);
+        widget->setDisplayTooltip(tooltipForDisplay(display, latestValues()));
+        widget->setAnchorOffsetPx(anchorOffsetPx);
+        widget->showInTaskbar();
+        anchorOffsetPx += widget->width() + 2;
+    }
 }
 
-QString WindowsTaskbarIndicator::overlayText() const
+QString WindowsTaskbarIndicator::overlayTextForDisplay(const TaskbarPluginDisplay& display) const
 {
-    const QList<TaskbarDetailContent> contents = currentDetailContents();
-    for (const TaskbarDetailContent& content : contents) {
-        QStringList lines;
-        for (const TaskbarDetailBadge& badge : content.badges) {
-            if (badge.label == QStringLiteral("INTERVAL")) {
-                continue;
-            }
-            lines.append(QStringLiteral("%1: %2")
-                .arg(localizedBadgeLabel(badge.label), badge.value));
-            if (lines.size() == 2) {
-                return lines.join(QStringLiteral("\n"));
-            }
-        }
+    const QString label = labelForDisplay(display, latestValues()).trimmed();
+    if (label.contains(QLatin1Char('\n'))) {
+        return label;
     }
 
-    QString label = currentLabel().simplified();
-    if (label.isEmpty()) {
+    const QString simplified = label.simplified();
+    if (simplified.isEmpty()) {
         return {};
     }
 
-    const QStringList parts = label.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+    const QStringList parts = simplified.split(QLatin1Char(' '), Qt::SkipEmptyParts);
     if (parts.size() >= 2) {
         return QStringLiteral("%1\n%2").arg(parts.at(0), parts.mid(1).join(QStringLiteral(" ")));
     }
-    return label;
+    return simplified;
 }
 
-QString WindowsTaskbarIndicator::localizedBadgeLabel(const QString& label) const
+void WindowsTaskbarIndicator::rebuildOverlayWidgets()
 {
-    if (label == QStringLiteral("MEMORY")) {
-        return QString::fromUtf8("\xE5\x86\x85\xE5\xAD\x98");
+    const int displayCount = pluginDisplays().size();
+    while (m_overlayWidgets.size() > displayCount) {
+        WindowsTaskbarOverlayWidget* widget = m_overlayWidgets.takeLast();
+        widget->hideFromTaskbar();
+        widget->deleteLater();
     }
-    if (label == QStringLiteral("UPTIME")) {
-        return QString::fromUtf8("\xE8\xBF\x90\xE8\xA1\x8C");
+
+    while (m_overlayWidgets.size() < displayCount) {
+        auto* widget = new WindowsTaskbarOverlayWidget();
+        connect(widget, &WindowsTaskbarOverlayWidget::detailRequested, this,
+            [this, widget](const QRect& anchorRect) {
+                showDetailForOverlay(widget, anchorRect);
+            });
+        m_overlayWidgets.append(widget);
     }
-    return label;
+}
+
+void WindowsTaskbarIndicator::showDetailForOverlay(
+    WindowsTaskbarOverlayWidget* widget,
+    const QRect& anchorRect)
+{
+    const int index = m_overlayWidgets.indexOf(widget);
+    if (index < 0 || index >= pluginDisplays().size()) {
+        return;
+    }
+
+    const TaskbarDetailContent content = detailContentForDisplay(
+        pluginDisplays().at(index),
+        latestValues());
+    if (content.isEmpty()) {
+        return;
+    }
+
+    showDetailMenuNear(QList<TaskbarDetailContent>{content}, anchorRect);
 }
 
 } // namespace Vitals

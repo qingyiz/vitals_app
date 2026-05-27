@@ -97,7 +97,7 @@ The current codebase includes the following built-in plugins. All of them are de
 | Plugin | ID | Capabilities | Metrics / data | Implemented platforms |
 | --- | --- | --- | --- | --- |
 | System Information | `com.vitals.systeminfo` | Monitor, panel, taskbar, settings | Device name, OS version, CPU model, GPU model, total memory, uptime | macOS, Windows |
-| CPU Monitor | `com.vitals.cpu` | Monitor, panel, taskbar, settings | CPU model, logical cores, total CPU usage, per-core usage | macOS |
+| CPU Monitor | `com.vitals.cpu` | Monitor, panel, taskbar, settings | CPU model, logical cores, total CPU usage, per-core usage | macOS, Windows |
 | Memory Monitor | `com.vitals.memory` | Monitor, panel, taskbar | Total memory, used memory, available memory, memory usage percentage | macOS |
 | Network Monitor | `com.vitals.network` | Monitor, panel, taskbar, settings | Primary interface, active interfaces, download/upload rate, total received/sent bytes | macOS |
 
@@ -112,8 +112,8 @@ The initial framework includes:
 - Platform-aware plugin loading through `supportedPlatforms` metadata.
 - Qt host application with dashboard and navigation.
 - Cross-platform taskbar/tray/menu-bar indicator fed by `MetricCenter`, with capability-aware plugin integration.
-- Windows taskbar text overlay for plugin summaries, with the detail popup opened from the visible taskbar text area instead of the hidden tray icon.
-- Per-plugin taskbar visibility controls in the plugin center; disabling and re-enabling a plugin taskbar display rebuilds the Windows overlay cleanly.
+- Windows taskbar text overlays for plugin summaries. Each enabled taskbar-capable plugin owns its own visible button and opens only its own detail popup.
+- Per-plugin taskbar visibility controls in the plugin center; disabling and re-enabling a plugin taskbar display rebuilds the Windows overlay set cleanly.
 - System information, CPU, memory, and network plugins loaded through the plugin runtime using the new "plugin shell + capability objects" structure.
 - Stable plugin display ordering in the host runtime, so system information appears before CPU, memory, and other monitor plugins regardless of filesystem scan order.
 
@@ -126,7 +126,7 @@ Planned follow-up work includes:
 - Stabilize the host runtime: verify plugin loading, dashboard rendering, and menu-bar/tray behavior across supported desktop environments.
 - Improve plugin management: show loaded, disabled, skipped, and failed plugins with clearer runtime status and error details.
 - Add a unified settings surface for `settingsCapability`, so plugin configuration can be hosted consistently.
-- Expand platform support by adding Windows and Linux collectors for CPU, memory, network, and system information plugins.
+- Expand platform support by adding Linux collectors for CPU and system information, plus Windows/Linux collectors for memory and network plugins.
 - Strengthen the metric pipeline with refresh throttling, history buffers, and chart-ready time-series data.
 - Continue the shared UI component system with reusable chart, gauge, table, tile, and row widgets.
 - Add more built-in monitor plugins, including disk, battery, GPU, and process monitors.
@@ -233,12 +233,12 @@ Vitals 通过插件扩展能力。一个插件可以暴露一种或多种能力�
 
 ## 插件状态
 
-当前代码包含以下内置插件。它们都声明为 monitor 类插件，并且目前都通过 `supportedPlatforms: ["macos"]` 元数据和 `platform/macos/` 下的 macOS collector 实现支持 macOS。宿主会按监控优先级应用稳定的默认导航顺序：系统信息优先，其次是 CPU、内存、GPU、网络、磁盘、电池、进程，其他插件再按名称排序。
+当前代码包含以下内置插件。它们都声明为 monitor 类插件，并通过 `supportedPlatforms` 元数据声明已经实现的平台能力。宿主会按监控优先级应用稳定的默认导航顺序：系统信息优先，其次是 CPU、内存、GPU、网络、磁盘、电池、进程，其他插件再按名称排序。
 
 | 插件 | ID | 能力 | 指标 / 数据 | 已实现平台 |
 | --- | --- | --- | --- | --- |
-| System Information | `com.vitals.systeminfo` | 监控、面板、任务栏、设置 | 设备名、系统版本、CPU 型号、GPU 型号、总内存、运行时长 | macOS |
-| CPU Monitor | `com.vitals.cpu` | 监控、面板、任务栏、设置 | CPU 型号、逻辑核心数、CPU 总使用率、单核心使用率 | macOS |
+| System Information | `com.vitals.systeminfo` | 监控、面板、任务栏、设置 | 设备名、系统版本、CPU 型号、GPU 型号、总内存、运行时长 | macOS, Windows |
+| CPU Monitor | `com.vitals.cpu` | 监控、面板、任务栏、设置 | CPU 型号、逻辑核心数、CPU 总使用率、单核心使用率 | macOS, Windows |
 | Memory Monitor | `com.vitals.memory` | 监控、面板、任务栏 | 总内存、已用内存、可用内存、内存使用率 | macOS |
 | Network Monitor | `com.vitals.network` | 监控、面板、任务栏、设置 | 主网络接口、活跃接口、下载/上传速率、累计接收/发送字节数 | macOS |
 
@@ -253,6 +253,7 @@ Vitals 通过插件扩展能力。一个插件可以暴露一种或多种能力�
 - 通过 `supportedPlatforms` 元数据实现的平台感知插件加载。
 - 带仪表盘和导航的 Qt 宿主应用。
 - 由 `MetricCenter` 驱动、可感知插件能力的跨平台任务栏/托盘/菜单栏指示器。
+- Windows 任务栏支持每个已启用 taskbar capability 的插件拥有独立文本按钮，并且每个按钮只打开自己的插件详情。
 - 系统信息、CPU、内存和网络插件，使用新的 “plugin shell + capability objects” 结构通过插件运行时加载。
 - 宿主运行时已经支持稳定的插件展示顺序，系统信息会优先显示，然后是 CPU、内存和其他监控插件，不再依赖文件系统扫描顺序。
 
@@ -265,7 +266,7 @@ Vitals 通过插件扩展能力。一个插件可以暴露一种或多种能力�
 - 稳定宿主运行时：验证插件加载、Dashboard 渲染，以及菜单栏 / 托盘在不同桌面环境下的表现。
 - 完善插件管理：展示已加载、已禁用、已跳过和加载失败的插件，并提供更清晰的运行状态和错误信息。
 - 为 `settingsCapability` 接入统一设置界面，让插件配置由宿主统一承载。
-- 扩展平台支持：为 CPU、内存、网络和系统信息插件补充 Windows / Linux collector。
+- 扩展平台支持：为 CPU 和系统信息补充 Linux collector，并为内存、网络补充 Windows / Linux collector。
 - 强化指标链路：加入刷新节流、历史缓存，以及可直接用于图表展示的时间序列数据。
 - 继续建设通用 UI 组件体系，补充图表、仪表盘、表格、信息块和行组件。
 - 增加更多内置监控插件，包括磁盘、电池、GPU 和进程监控。

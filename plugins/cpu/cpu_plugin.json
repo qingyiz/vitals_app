@@ -1,11 +1,11 @@
 {
   "id": "com.vitals.cpu",
   "name": "CPU Monitor",
-  "description": "Live CPU usage monitor plugin for macOS",
+  "description": "Live CPU usage monitor plugin for Windows and macOS",
   "version": "0.1.0",
   "author": "Vitals",
   "category": "monitor",
   "supportsTaskbarDisplay": true,
-  "supportedPlatforms": ["macos"],
+  "supportedPlatforms": ["windows", "macos"],
   "requiredHostVersion": "0.1.0"
 }
