@@ -92,7 +92,7 @@ docs/
 
 主程序目前不包含任何 CPU、内存、网络等具体监控采集逻辑。
 
-任务栏显示能力目前由宿主订阅 `MetricCenter`，将关键指标显示在系统托盘 tooltip、菜单和动态图标中。平台差异由 `WindowsTaskbarIndicator`、`MacTaskbarIndicator`、`LinuxTaskbarIndicator` 隔离。
+任务栏显示能力目前由宿主订阅 `MetricCenter`，将关键指标显示在系统托盘 tooltip、菜单和动态图标中。平台差异由 `WindowsTaskbarIndicator`、`MacTaskbarIndicator`、`LinuxTaskbarIndicator` 隔离。Windows 当前支持每个启用 taskbar capability 的插件拥有独立文本按钮，并点击打开对应插件详情。
 
 ### 5. 通用 UI 组件
 
@@ -125,6 +125,7 @@ docs/
 - 监控类 capability 继续通过 `Collector + Factory + platform/*` 组织跨平台采集实现。
 - 插件元信息分别位于 `plugins/cpu/cpu_plugin.json`、`plugins/network/network_plugin.json`、`plugins/systeminfo/systeminfo_plugin.json`。
 - 当前已实现平台通过 `supportedPlatforms` 明确声明。
+- CPU 插件当前已支持 macOS 与 Windows，Windows 采集层位于 `plugins/cpu/platform/windows/`。
 
 插件输出目录已统一为：
 
@@ -199,15 +200,14 @@ build/bin/plugins/
 
 ### 第三阶段：系统信息插件
 
-- 补充 Windows 平台系统信息采集实现。
-- 补充 Linux 平台系统信息采集实现。
+- 继续补充 Linux 平台系统信息采集实现，并完善 Windows/macOS 采集字段覆盖。
 - 将系统信息详情页扩展为更完整的硬件与宿主摘要页。
 - 根据需要增加更多稳定指标，例如架构、内核版本、序列化标识等。
 - 继续抽离 `InfoTileWidget`、`InfoRowWidget` 等更细粒度组件，降低后续插件页面开发成本。
 
 ### 第四阶段：CPU / Network 插件深化
 
-- 完善 CPU Windows / Linux collector。
+- 完善 CPU Linux collector，并继续补充 Windows/macOS 下的频率、温度等扩展指标。
 - 完善 Network Windows / Linux collector。
 - 把 capability 间重复逻辑进一步抽成可复用基类或 helper。
 - 为设置 capability 接入真实设置项，而不是占位 widget。
@@ -229,7 +229,7 @@ build/bin/plugins/
 
 但项目整体仍处于早期阶段，当前边界仍然包括：
 
-- 真实跨平台能力还未补齐，CPU / Network / SystemInfo 的 Windows / Linux collector 尚未实现。
+- 真实跨平台能力还未补齐，CPU 与 SystemInfo 仍缺 Linux collector，Network 仍缺 Windows / Linux collector。
 - 插件管理页仍是占位版本。
 - 自动化测试仍未建立。
 - 多平台运行验证还未完成。

@@ -164,6 +164,7 @@ protected:
     /// Returns structured detail content for the current menu snapshot.
     QList<TaskbarDetailContent> currentDetailContents() const;
     void showDetailMenuNear(const QRect& anchorRect);
+    void showDetailMenuNear(const QList<TaskbarDetailContent>& contents, const QRect& anchorRect);
     QString labelForDisplay(const TaskbarPluginDisplay& display, const QHash<QString, MetricValue>& latestValues) const;
     QString tooltipForDisplay(const TaskbarPluginDisplay& display, const QHash<QString, MetricValue>& latestValues) const;
     TaskbarDetailContent detailContentForDisplay(const TaskbarPluginDisplay& display, const QHash<QString, MetricValue>& latestValues) const;

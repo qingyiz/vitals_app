@@ -25,10 +25,11 @@ protected:
     void refresh() override;
 
 private:
-    QString overlayText() const;
-    QString localizedBadgeLabel(const QString& label) const;
+    QString overlayTextForDisplay(const TaskbarPluginDisplay& display) const;
+    void rebuildOverlayWidgets();
+    void showDetailForOverlay(WindowsTaskbarOverlayWidget* widget, const QRect& anchorRect);
 
-    WindowsTaskbarOverlayWidget* m_overlayWidget = nullptr;
+    QList<WindowsTaskbarOverlayWidget*> m_overlayWidgets;
 };
 
 } // namespace Vitals

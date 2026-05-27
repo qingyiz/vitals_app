@@ -14,7 +14,7 @@ MemoryPanelWidget::MemoryPanelWidget(QWidget* parent)
 
     m_infoPanel = new InfoPanelWidget(this);
     m_infoPanel->setPageTitle(QStringLiteral("Memory Monitor"));
-    m_infoPanel->setPageSubtitle(QStringLiteral("Live physical memory usage snapshot from macOS."));
+    m_infoPanel->setPageSubtitle(QStringLiteral("Live physical memory usage snapshot from the active platform."));
     m_infoPanel->setDetailsTitle(QStringLiteral("Current Memory"));
     m_infoPanel->setHeroEyebrow(QStringLiteral("MEMORY"));
 

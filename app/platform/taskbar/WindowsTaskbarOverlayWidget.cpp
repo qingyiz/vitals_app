@@ -83,7 +83,7 @@ WindowsTaskbarOverlayWidget::WindowsTaskbarOverlayWidget(QWidget* parent)
     setCursor(Qt::PointingHandCursor);
 
     auto* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(7, 2, 5, 2);
+    layout->setContentsMargins(3, 2, 3, 2);
     layout->setSpacing(0);
 
     QFont font(QStringLiteral("Microsoft YaHei UI"));
@@ -94,13 +94,13 @@ WindowsTaskbarOverlayWidget::WindowsTaskbarOverlayWidget(QWidget* parent)
     font.setPixelSize(11);
     font.setWeight(QFont::Normal);
     m_label->setFont(font);
-    m_label->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    m_label->setMinimumSize(64, 26);
+    m_label->setAlignment(Qt::AlignCenter);
+    m_label->setMinimumSize(0, 26);
     m_label->setStyleSheet(QStringLiteral("color: white; background: transparent;"));
     m_label->setAttribute(Qt::WA_TransparentForMouseEvents, true);
     layout->addWidget(m_label);
 
-    setFixedSize(78, 30);
+    setFixedSize(34, 30);
     setStyleSheet(QStringLiteral("background: transparent;"));
 
     connect(m_placementTimer, &QTimer::timeout, this, &WindowsTaskbarOverlayWidget::updatePlacement);
@@ -118,8 +118,8 @@ void WindowsTaskbarOverlayWidget::setDisplayText(const QString& text)
         widestLine = qMax(widestLine, metrics.horizontalAdvance(line));
     }
 
-    const int horizontalPadding = 12;
-    const int compactWidth = qBound(70, widestLine + horizontalPadding, 104);
+    const int horizontalPadding = 8;
+    const int compactWidth = qBound(32, widestLine + horizontalPadding, 72);
     if (width() != compactWidth) {
         setFixedWidth(compactWidth);
     }
@@ -129,6 +129,12 @@ void WindowsTaskbarOverlayWidget::setDisplayTooltip(const QString& tooltip)
 {
     setToolTip(tooltip);
     m_label->setToolTip(tooltip);
+}
+
+void WindowsTaskbarOverlayWidget::setAnchorOffsetPx(int offsetPx)
+{
+    m_anchorOffsetPx = qMax(2, offsetPx);
+    updatePlacement();
 }
 
 void WindowsTaskbarOverlayWidget::showInTaskbar()
@@ -174,17 +180,16 @@ void WindowsTaskbarOverlayWidget::updatePlacement()
 
     const QRect trayRect = trayNotifyRect();
     const bool horizontal = isHorizontalTaskbar(taskbarRect);
-    const int margin = 2;
 
     QPoint topLeft;
     if (horizontal) {
         const int anchorLeft = trayRect.isValid() ? trayRect.left() : taskbarRect.right();
-        topLeft.setX(anchorLeft - width() - margin);
+        topLeft.setX(anchorLeft - width() - m_anchorOffsetPx);
         topLeft.setY(taskbarRect.top() + (taskbarRect.height() - height()) / 2);
     } else {
         const int anchorTop = trayRect.isValid() ? trayRect.top() : taskbarRect.bottom();
         topLeft.setX(taskbarRect.left() + (taskbarRect.width() - width()) / 2);
-        topLeft.setY(anchorTop - height() - margin);
+        topLeft.setY(anchorTop - height() - m_anchorOffsetPx);
     }
 
     QRect screenBounds;

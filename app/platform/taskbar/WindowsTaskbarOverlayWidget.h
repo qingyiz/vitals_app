@@ -17,6 +17,7 @@ public:
 
     void setDisplayText(const QString& text);
     void setDisplayTooltip(const QString& tooltip);
+    void setAnchorOffsetPx(int offsetPx);
     void showInTaskbar();
     void hideFromTaskbar();
     void updatePlacement();
@@ -34,6 +35,7 @@ private:
 
     QLabel* m_label = nullptr;
     QTimer* m_placementTimer = nullptr;
+    int m_anchorOffsetPx = 2;
     bool m_shouldDisplay = false;
 };
 

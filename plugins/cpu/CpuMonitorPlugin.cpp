@@ -19,11 +19,11 @@ PluginMetaInfo CpuMonitorPlugin::metaInfo() const
     return {
         QStringLiteral("com.vitals.cpu"),
         QStringLiteral("CPU Monitor"),
-        QStringLiteral("Live CPU usage monitor plugin for macOS."),
+        QStringLiteral("Live CPU usage monitor plugin for Windows and macOS."),
         QStringLiteral("0.1.0"),
         QStringLiteral("Vitals"),
         QStringLiteral("monitor"),
-        {QStringLiteral("macos")},
+        {QStringLiteral("windows"), QStringLiteral("macos")},
         QStringLiteral("0.1.0"),
         true
     };
