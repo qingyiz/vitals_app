@@ -229,7 +229,7 @@ build/bin/plugins/
 
 但项目整体仍处于早期阶段，当前边界仍然包括：
 
-- 真实跨平台能力还未补齐，CPU 与 SystemInfo 仍缺 Linux collector，Memory / Network 仍缺 Windows / Linux collector。
+- 真实跨平台能力还未补齐，CPU 与 SystemInfo 仍缺 Linux collector，Network 仍缺 Windows / Linux collector。
 - 插件管理页仍是占位版本。
 - 自动化测试仍未建立。
 - 多平台运行验证还未完成。

@@ -23,6 +23,22 @@ if(APPLE)
     )
 endif()
 
+if(WIN32)
+    target_sources(MemoryMonitorPlugin
+        PRIVATE
+            platform/windows/WindowsMemoryCollector.h
+            platform/windows/WindowsMemoryCollector.cpp
+    )
+endif()
+
+if(UNIX AND NOT APPLE)
+    target_sources(MemoryMonitorPlugin
+        PRIVATE
+            platform/linux/LinuxMemoryCollector.h
+            platform/linux/LinuxMemoryCollector.cpp
+    )
+endif()
+
 target_include_directories(MemoryMonitorPlugin
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
@@ -39,3 +55,17 @@ set_target_properties(MemoryMonitorPlugin PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${VITALS_OUTPUT_DIR}/plugins"
     RUNTIME_OUTPUT_DIRECTORY "${VITALS_OUTPUT_DIR}/plugins"
 )
+
+if(MSVC)
+    target_compile_options(MemoryMonitorPlugin PRIVATE /utf-8)
+endif()
+
+if(WIN32 AND CMAKE_CONFIGURATION_TYPES)
+    foreach(config ${CMAKE_CONFIGURATION_TYPES})
+        string(TOUPPER "${config}" config_upper)
+        set_target_properties(MemoryMonitorPlugin PROPERTIES
+            "LIBRARY_OUTPUT_DIRECTORY_${config_upper}" "${VITALS_OUTPUT_DIR}/${config}/plugins"
+            "RUNTIME_OUTPUT_DIRECTORY_${config_upper}" "${VITALS_OUTPUT_DIR}/${config}/plugins"
+        )
+    endforeach()
+endif()

@@ -18,11 +18,11 @@ PluginMetaInfo MemoryMonitorPlugin::metaInfo() const
     return {
         QStringLiteral("com.vitals.memory"),
         QStringLiteral("Memory Monitor"),
-        QStringLiteral("Live physical memory usage monitor plugin for macOS."),
+        QStringLiteral("Cross-platform physical memory usage monitor plugin."),
         QStringLiteral("0.1.0"),
         QStringLiteral("Vitals"),
         QStringLiteral("monitor"),
-        {QStringLiteral("macos")},
+        {QStringLiteral("windows"), QStringLiteral("macos"), QStringLiteral("linux")},
         QStringLiteral("0.1.0"),
         true
     };

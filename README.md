@@ -98,7 +98,7 @@ The current codebase includes the following built-in plugins. All of them are de
 | --- | --- | --- | --- | --- |
 | System Information | `com.vitals.systeminfo` | Monitor, panel, taskbar, settings | Device name, OS version, CPU model, GPU model, total memory, uptime | macOS, Windows |
 | CPU Monitor | `com.vitals.cpu` | Monitor, panel, taskbar, settings | CPU model, logical cores, total CPU usage, per-core usage | macOS, Windows |
-| Memory Monitor | `com.vitals.memory` | Monitor, panel, taskbar | Total memory, used memory, available memory, memory usage percentage | macOS |
+| Memory Monitor | `com.vitals.memory` | Monitor, panel, taskbar | Total memory, used memory, available memory, memory usage percentage | Windows, macOS, Linux |
 | Network Monitor | `com.vitals.network` | Monitor, panel, taskbar, settings | Primary interface, active interfaces, download/upload rate, total received/sent bytes | macOS |
 
 Other platforms are not implemented yet. The plugin manager will skip plugins whose `supportedPlatforms` metadata does not match the current host platform.
@@ -126,7 +126,7 @@ Planned follow-up work includes:
 - Stabilize the host runtime: verify plugin loading, dashboard rendering, and menu-bar/tray behavior across supported desktop environments.
 - Improve plugin management: show loaded, disabled, skipped, and failed plugins with clearer runtime status and error details.
 - Add a unified settings surface for `settingsCapability`, so plugin configuration can be hosted consistently.
-- Expand platform support by adding Linux collectors for CPU and system information, plus Windows/Linux collectors for memory and network plugins.
+- Expand platform support by adding Linux collectors for CPU and system information, plus Windows/Linux collectors for network plugins.
 - Strengthen the metric pipeline with refresh throttling, history buffers, and chart-ready time-series data.
 - Continue the shared UI component system with reusable chart, gauge, table, tile, and row widgets.
 - Add more built-in monitor plugins, including disk, battery, GPU, and process monitors.
@@ -239,7 +239,7 @@ Vitals 通过插件扩展能力。一个插件可以暴露一种或多种能力�
 | --- | --- | --- | --- | --- |
 | System Information | `com.vitals.systeminfo` | 监控、面板、任务栏、设置 | 设备名、系统版本、CPU 型号、GPU 型号、总内存、运行时长 | macOS, Windows |
 | CPU Monitor | `com.vitals.cpu` | 监控、面板、任务栏、设置 | CPU 型号、逻辑核心数、CPU 总使用率、单核心使用率 | macOS, Windows |
-| Memory Monitor | `com.vitals.memory` | 监控、面板、任务栏 | 总内存、已用内存、可用内存、内存使用率 | macOS |
+| Memory Monitor | `com.vitals.memory` | 监控、面板、任务栏 | 总内存、已用内存、可用内存、内存使用率 | Windows, macOS, Linux |
 | Network Monitor | `com.vitals.network` | 监控、面板、任务栏、设置 | 主网络接口、活跃接口、下载/上传速率、累计接收/发送字节数 | macOS |
 
 其他平台尚未实现。插件管理器会根据 `supportedPlatforms` 元数据判断平台兼容性，并跳过不匹配当前宿主平台的插件。
