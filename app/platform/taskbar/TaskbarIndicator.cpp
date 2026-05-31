@@ -16,6 +16,7 @@
 #include <QPixmap>
 #include <QRectF>
 #include <QScreen>
+#include <QStyle>
 #include <QSystemTrayIcon>
 #include <QWidgetAction>
 #include <QtMath>
@@ -425,13 +426,29 @@ void TaskbarIndicator::showDetailMenuNear(const QList<TaskbarDetailContent>& con
         return;
     }
 
+    m_menu->setMinimumSize(0, 0);
+    m_menu->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
     if (m_detailWidget) {
         m_detailWidget->setContents(contents);
-        m_detailWidget->adjustSize();
+    }
+    if (m_detailAction) {
+        m_menu->removeAction(m_detailAction);
+        m_menu->addAction(m_detailAction);
     }
 
+    m_menu->ensurePolished();
+    m_menu->updateGeometry();
     m_menu->adjustSize();
-    const QSize menuSize = m_menu->sizeHint();
+    QSize menuSize = m_menu->sizeHint();
+    if (m_detailWidget) {
+        const int panelWidth = m_menu->style()
+            ? m_menu->style()->pixelMetric(QStyle::PM_MenuPanelWidth, nullptr, m_menu)
+            : 0;
+        const QSize detailSize = m_detailWidget->sizeHint();
+        menuSize = menuSize.expandedTo(
+            QSize(detailSize.width() + panelWidth * 2, detailSize.height() + panelWidth * 2));
+    }
+    m_menu->setFixedSize(menuSize);
     QPoint popupPos(anchorRect.center().x() - menuSize.width() / 2,
         anchorRect.top() - menuSize.height() - 6);
 

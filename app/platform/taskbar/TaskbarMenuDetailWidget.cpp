@@ -37,6 +37,7 @@ TaskbarMenuDetailWidget::TaskbarMenuDetailWidget(QWidget* parent)
     m_layout = new QVBoxLayout(this);
     m_layout->setContentsMargins(0, 0, 0, 0);
     m_layout->setSpacing(0);
+    m_layout->setSizeConstraint(QLayout::SetMinAndMaxSize);
 
     setStyleSheet(QStringLiteral(R"(
         QWidget#taskbarDetailMenu {
@@ -101,6 +102,20 @@ TaskbarMenuDetailWidget::TaskbarMenuDetailWidget(QWidget* parent)
     )"));
 }
 
+QSize TaskbarMenuDetailWidget::sizeHint() const
+{
+    if (m_contentSize.isValid()) {
+        return m_contentSize;
+    }
+
+    return QWidget::sizeHint();
+}
+
+QSize TaskbarMenuDetailWidget::minimumSizeHint() const
+{
+    return sizeHint();
+}
+
 void TaskbarMenuDetailWidget::setContents(const QList<TaskbarDetailContent>& contents)
 {
     clearLayout(m_layout);
@@ -109,8 +124,7 @@ void TaskbarMenuDetailWidget::setContents(const QList<TaskbarDetailContent>& con
         auto* emptyLabel = label(QStringLiteral("Waiting for metrics"), QStringLiteral("detailSubtitle"), this);
         emptyLabel->setAlignment(Qt::AlignCenter);
         m_layout->addWidget(emptyLabel);
-        updateGeometry();
-        adjustSize();
+        updateContentGeometry();
         return;
     }
 
@@ -120,8 +134,7 @@ void TaskbarMenuDetailWidget::setContents(const QList<TaskbarDetailContent>& con
         }
     }
 
-    updateGeometry();
-    adjustSize();
+    updateContentGeometry();
 }
 
 QWidget* TaskbarMenuDetailWidget::createContentPanel(const TaskbarDetailContent& content)
@@ -246,6 +259,24 @@ void TaskbarMenuDetailWidget::clearLayout(QLayout* layout)
         }
         delete item;
     }
+}
+
+void TaskbarMenuDetailWidget::updateContentGeometry()
+{
+    setMinimumHeight(0);
+    setMaximumHeight(QWIDGETSIZE_MAX);
+
+    if (m_layout) {
+        m_layout->invalidate();
+        m_layout->activate();
+    }
+
+    const QSize preferredSize = m_layout ? m_layout->sizeHint() : QWidget::sizeHint();
+    const int preferredWidth = qBound(minimumWidth(), preferredSize.width(), maximumWidth());
+    m_contentSize = QSize(preferredWidth, preferredSize.height());
+    setFixedSize(m_contentSize);
+    resize(m_contentSize);
+    updateGeometry();
 }
 
 } // namespace Vitals
