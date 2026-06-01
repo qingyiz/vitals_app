@@ -6,6 +6,7 @@
 #include <QLabel>
 #include <QLayoutItem>
 #include <QProgressBar>
+#include <QSizePolicy>
 #include <QVBoxLayout>
 
 namespace Vitals {
@@ -17,11 +18,17 @@ QString normalizedAccent(const QString& color)
     return color.isEmpty() ? QStringLiteral("#0a84ff") : color;
 }
 
+constexpr int DetailMinimumWidth = 320;
+constexpr int DetailMaximumWidth = 380;
+constexpr int RowValueMaximumWidth = 230;
+constexpr int RowDetailMaximumWidth = DetailMaximumWidth - 28;
+
 QLabel* label(const QString& text, const QString& objectName, QWidget* parent)
 {
     auto* widget = new QLabel(text, parent);
     widget->setObjectName(objectName);
     widget->setTextInteractionFlags(Qt::NoTextInteraction);
+    widget->setTextFormat(Qt::PlainText);
     return widget;
 }
 
@@ -30,8 +37,8 @@ QLabel* label(const QString& text, const QString& objectName, QWidget* parent)
 TaskbarMenuDetailWidget::TaskbarMenuDetailWidget(QWidget* parent)
     : QWidget(parent)
 {
-    setMinimumWidth(320);
-    setMaximumWidth(380);
+    setMinimumWidth(DetailMinimumWidth);
+    setMaximumWidth(DetailMaximumWidth);
     setObjectName(QStringLiteral("taskbarDetailMenu"));
 
     m_layout = new QVBoxLayout(this);
@@ -141,6 +148,8 @@ QWidget* TaskbarMenuDetailWidget::createContentPanel(const TaskbarDetailContent&
 {
     auto* panel = new QFrame(this);
     panel->setObjectName(QStringLiteral("detailPanel"));
+    panel->setMinimumWidth(DetailMinimumWidth);
+    panel->setMaximumWidth(DetailMaximumWidth);
     auto* layout = new QVBoxLayout(panel);
     layout->setContentsMargins(14, 12, 14, 12);
     layout->setSpacing(10);
@@ -220,15 +229,25 @@ QWidget* TaskbarMenuDetailWidget::createRow(const TaskbarDetailRow& row)
     auto* top = new QHBoxLayout();
     top->setContentsMargins(0, 0, 0, 0);
     top->setSpacing(8);
-    top->addWidget(label(row.label, QStringLiteral("rowLabel"), container), 1);
+    auto* rowLabel = label(row.label, QStringLiteral("rowLabel"), container);
+    rowLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
+    top->addWidget(rowLabel, 0);
+
     auto* value = label(row.value, QStringLiteral("rowValue"), container);
     value->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    top->addWidget(value);
+    value->setWordWrap(true);
+    value->setMinimumWidth(0);
+    value->setMaximumWidth(RowValueMaximumWidth);
+    value->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    top->addWidget(value, 1);
     layout->addLayout(top);
 
     if (!row.detail.isEmpty()) {
         auto* detail = label(row.detail, QStringLiteral("rowDetail"), container);
         detail->setWordWrap(true);
+        detail->setMinimumWidth(0);
+        detail->setMaximumWidth(RowDetailMaximumWidth);
+        detail->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
         layout->addWidget(detail);
     }
 

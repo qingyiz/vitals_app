@@ -59,6 +59,26 @@ QString formatCompactBytes(quint64 bytes)
         .arg(QString::fromLatin1(units[unitIndex]));
 }
 
+QStringList interfaceList(const QString& activeInterfaces)
+{
+    return activeInterfaces.split(QStringLiteral(", "), Qt::SkipEmptyParts);
+}
+
+QString compactInterfaceSummary(const QString& primaryInterface, const QString& activeInterfaces)
+{
+    const QStringList interfaces = interfaceList(activeInterfaces);
+    if (interfaces.isEmpty()) {
+        return primaryInterface.isEmpty() ? QStringLiteral("--") : primaryInterface;
+    }
+
+    const QString preferredInterface = primaryInterface.isEmpty() ? interfaces.first() : primaryInterface;
+    if (interfaces.size() <= 1) {
+        return preferredInterface;
+    }
+
+    return QStringLiteral("%1 +%2 links").arg(preferredInterface).arg(interfaces.size() - 1);
+}
+
 } // namespace
 
 NetworkTaskbarCapability::NetworkTaskbarCapability(const NetworkMonitorCapability* monitorCapability, IAppContext* context)
@@ -89,7 +109,7 @@ QString NetworkTaskbarCapability::tooltip(const QHash<QString, MetricValue>& lat
 
     QStringList parts;
     if (!primaryInterface.isEmpty()) parts.append(text(QStringLiteral("network.primaryCompact"), QStringLiteral("Primary %1")).arg(primaryInterface));
-    if (!activeInterfaces.isEmpty()) parts.append(activeInterfaces);
+    if (!activeInterfaces.isEmpty()) parts.append(compactInterfaceSummary(primaryInterface, activeInterfaces));
     if (totalReceived > 0) parts.append(text(QStringLiteral("network.downCompact"), QStringLiteral("Down %1")).arg(formatCompactBytes(totalReceived)));
     if (totalSent > 0) parts.append(text(QStringLiteral("network.upCompact"), QStringLiteral("Up %1")).arg(formatCompactBytes(totalSent)));
     return parts.join(QStringLiteral(" | "));
@@ -125,7 +145,7 @@ TaskbarDetailContent NetworkTaskbarCapability::detailContent(const QHash<QString
     content.badges = {
         {text(QStringLiteral("network.upUpper"), QStringLiteral("UP")), formatCompactRate(uploadRate)},
         {text(QStringLiteral("network.linksUpper"), QStringLiteral("LINKS")), activeInterfaces.isEmpty() ? QStringLiteral("0")
-                                                             : QString::number(activeInterfaces.split(QStringLiteral(", ")).size())},
+                                                             : QString::number(interfaceList(activeInterfaces).size())},
         {text(QStringLiteral("common.intervalUpper"), QStringLiteral("INTERVAL")), QStringLiteral("%1s").arg((m_monitorCapability
                     ? m_monitorCapability->intervalMs()
                     : 2000) / 1000.0, 0, 'f', 1)}
@@ -141,7 +161,7 @@ TaskbarDetailContent NetworkTaskbarCapability::detailContent(const QHash<QString
         text(QStringLiteral("network.trafficCounters"), QStringLiteral("Traffic Counters")),
         {
             {text(QStringLiteral("network.primaryInterface"), QStringLiteral("Primary Interface")), primaryInterface.isEmpty() ? QStringLiteral("--") : primaryInterface, QString(), -1.0, QString()},
-            {text(QStringLiteral("network.activeInterfaces"), QStringLiteral("Active Interfaces")), activeInterfaces.isEmpty() ? QStringLiteral("--") : activeInterfaces, QString(), -1.0, QString()},
+            {text(QStringLiteral("network.activeInterfaces"), QStringLiteral("Active Interfaces")), compactInterfaceSummary(primaryInterface, activeInterfaces), QString(), -1.0, QString()},
             {text(QStringLiteral("network.totalReceived"), QStringLiteral("Total Received")), formatCompactBytes(totalReceived), QString(), -1.0, QString()},
             {text(QStringLiteral("network.totalSent"), QStringLiteral("Total Sent")), formatCompactBytes(totalSent), QString(), -1.0, QString()}
         }
