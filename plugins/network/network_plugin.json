@@ -1,11 +1,11 @@
 {
   "id": "com.vitals.network",
   "name": "Network Monitor",
-  "description": "Live network throughput and traffic monitor plugin for macOS",
+  "description": "Live network throughput and traffic monitor plugin for Windows and macOS",
   "version": "0.1.0",
   "author": "Vitals",
   "category": "monitor",
   "supportsTaskbarDisplay": true,
-  "supportedPlatforms": ["macos"],
+  "supportedPlatforms": ["windows", "macos"],
   "requiredHostVersion": "0.1.0"
 }

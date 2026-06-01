@@ -6,6 +6,7 @@
 #include <QLabel>
 #include <QLayoutItem>
 #include <QProgressBar>
+#include <QSizePolicy>
 #include <QVBoxLayout>
 
 namespace Vitals {
@@ -17,11 +18,17 @@ QString normalizedAccent(const QString& color)
     return color.isEmpty() ? QStringLiteral("#0a84ff") : color;
 }
 
+constexpr int DetailMinimumWidth = 320;
+constexpr int DetailMaximumWidth = 380;
+constexpr int RowValueMaximumWidth = 230;
+constexpr int RowDetailMaximumWidth = DetailMaximumWidth - 28;
+
 QLabel* label(const QString& text, const QString& objectName, QWidget* parent)
 {
     auto* widget = new QLabel(text, parent);
     widget->setObjectName(objectName);
     widget->setTextInteractionFlags(Qt::NoTextInteraction);
+    widget->setTextFormat(Qt::PlainText);
     return widget;
 }
 
@@ -30,13 +37,14 @@ QLabel* label(const QString& text, const QString& objectName, QWidget* parent)
 TaskbarMenuDetailWidget::TaskbarMenuDetailWidget(QWidget* parent)
     : QWidget(parent)
 {
-    setMinimumWidth(320);
-    setMaximumWidth(380);
+    setMinimumWidth(DetailMinimumWidth);
+    setMaximumWidth(DetailMaximumWidth);
     setObjectName(QStringLiteral("taskbarDetailMenu"));
 
     m_layout = new QVBoxLayout(this);
     m_layout->setContentsMargins(0, 0, 0, 0);
     m_layout->setSpacing(0);
+    m_layout->setSizeConstraint(QLayout::SetMinAndMaxSize);
 
     setStyleSheet(QStringLiteral(R"(
         QWidget#taskbarDetailMenu {
@@ -101,6 +109,20 @@ TaskbarMenuDetailWidget::TaskbarMenuDetailWidget(QWidget* parent)
     )"));
 }
 
+QSize TaskbarMenuDetailWidget::sizeHint() const
+{
+    if (m_contentSize.isValid()) {
+        return m_contentSize;
+    }
+
+    return QWidget::sizeHint();
+}
+
+QSize TaskbarMenuDetailWidget::minimumSizeHint() const
+{
+    return sizeHint();
+}
+
 void TaskbarMenuDetailWidget::setContents(const QList<TaskbarDetailContent>& contents)
 {
     clearLayout(m_layout);
@@ -109,8 +131,7 @@ void TaskbarMenuDetailWidget::setContents(const QList<TaskbarDetailContent>& con
         auto* emptyLabel = label(QStringLiteral("Waiting for metrics"), QStringLiteral("detailSubtitle"), this);
         emptyLabel->setAlignment(Qt::AlignCenter);
         m_layout->addWidget(emptyLabel);
-        updateGeometry();
-        adjustSize();
+        updateContentGeometry();
         return;
     }
 
@@ -120,14 +141,15 @@ void TaskbarMenuDetailWidget::setContents(const QList<TaskbarDetailContent>& con
         }
     }
 
-    updateGeometry();
-    adjustSize();
+    updateContentGeometry();
 }
 
 QWidget* TaskbarMenuDetailWidget::createContentPanel(const TaskbarDetailContent& content)
 {
     auto* panel = new QFrame(this);
     panel->setObjectName(QStringLiteral("detailPanel"));
+    panel->setMinimumWidth(DetailMinimumWidth);
+    panel->setMaximumWidth(DetailMaximumWidth);
     auto* layout = new QVBoxLayout(panel);
     layout->setContentsMargins(14, 12, 14, 12);
     layout->setSpacing(10);
@@ -207,15 +229,25 @@ QWidget* TaskbarMenuDetailWidget::createRow(const TaskbarDetailRow& row)
     auto* top = new QHBoxLayout();
     top->setContentsMargins(0, 0, 0, 0);
     top->setSpacing(8);
-    top->addWidget(label(row.label, QStringLiteral("rowLabel"), container), 1);
+    auto* rowLabel = label(row.label, QStringLiteral("rowLabel"), container);
+    rowLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
+    top->addWidget(rowLabel, 0);
+
     auto* value = label(row.value, QStringLiteral("rowValue"), container);
     value->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    top->addWidget(value);
+    value->setWordWrap(true);
+    value->setMinimumWidth(0);
+    value->setMaximumWidth(RowValueMaximumWidth);
+    value->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    top->addWidget(value, 1);
     layout->addLayout(top);
 
     if (!row.detail.isEmpty()) {
         auto* detail = label(row.detail, QStringLiteral("rowDetail"), container);
         detail->setWordWrap(true);
+        detail->setMinimumWidth(0);
+        detail->setMaximumWidth(RowDetailMaximumWidth);
+        detail->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
         layout->addWidget(detail);
     }
 
@@ -246,6 +278,24 @@ void TaskbarMenuDetailWidget::clearLayout(QLayout* layout)
         }
         delete item;
     }
+}
+
+void TaskbarMenuDetailWidget::updateContentGeometry()
+{
+    setMinimumHeight(0);
+    setMaximumHeight(QWIDGETSIZE_MAX);
+
+    if (m_layout) {
+        m_layout->invalidate();
+        m_layout->activate();
+    }
+
+    const QSize preferredSize = m_layout ? m_layout->sizeHint() : QWidget::sizeHint();
+    const int preferredWidth = qBound(minimumWidth(), preferredSize.width(), maximumWidth());
+    m_contentSize = QSize(preferredWidth, preferredSize.height());
+    setFixedSize(m_contentSize);
+    resize(m_contentSize);
+    updateGeometry();
 }
 
 } // namespace Vitals
