@@ -13,7 +13,7 @@ namespace Vitals {
 
 namespace {
 
-constexpr int BottomSafeAreaPx = 88;
+constexpr int BottomSafeAreaPx = 28;
 
 QLabel* createSelectableLabel(QWidget* parent, const QString& objectName)
 {

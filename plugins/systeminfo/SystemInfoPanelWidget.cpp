@@ -3,8 +3,6 @@
 #include "IAppContext.h"
 #include "InfoPanelWidget.h"
 
-#include <QFrame>
-#include <QScrollArea>
 #include <QSizePolicy>
 #include <QVBoxLayout>
 
@@ -20,15 +18,7 @@ SystemInfoPanelWidget::SystemInfoPanelWidget(IAppContext* context, QWidget* pare
     auto* rootLayout = new QVBoxLayout(this);
     rootLayout->setContentsMargins(0, 0, 0, 0);
 
-    auto* scrollArea = new QScrollArea(this);
-    scrollArea->setWidgetResizable(true);
-    scrollArea->setFrameShape(QFrame::NoFrame);
-    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    scrollArea->setMinimumSize(0, 0);
-    scrollArea->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
-
-    m_infoPanel = new InfoPanelWidget(scrollArea);
+    m_infoPanel = new InfoPanelWidget(this);
     m_infoPanel->setMinimumSize(680, 620);
     m_infoPanel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     m_infoPanel->setPageTitle(text(QStringLiteral("systemInfo.title"), QStringLiteral("System Information")));
@@ -37,8 +27,7 @@ SystemInfoPanelWidget::SystemInfoPanelWidget(IAppContext* context, QWidget* pare
     m_infoPanel->setDetailsTitle(text(QStringLiteral("systemInfo.currentSnapshot"), QStringLiteral("Current Snapshot")));
     m_infoPanel->setHeroEyebrow(text(QStringLiteral("systemInfo.host"), QStringLiteral("HOST")));
 
-    scrollArea->setWidget(m_infoPanel);
-    rootLayout->addWidget(scrollArea);
+    rootLayout->addWidget(m_infoPanel);
 }
 
 void SystemInfoPanelWidget::applySnapshot(const SystemInfoSnapshot& snapshot)

@@ -25,6 +25,14 @@ if(APPLE)
     )
 endif()
 
+if(WIN32)
+    target_sources(DiskMonitorPlugin
+        PRIVATE
+            platform/windows/WindowsDiskCollector.h
+            platform/windows/WindowsDiskCollector.cpp
+    )
+endif()
+
 target_include_directories(DiskMonitorPlugin
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}

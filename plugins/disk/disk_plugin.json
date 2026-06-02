@@ -1,11 +1,11 @@
 {
   "id": "com.vitals.disk",
   "name": "Disk Monitor",
-  "description": "macOS mounted disk capacity monitor with selectable internal and external drives",
+  "description": "Mounted disk capacity monitor with selectable internal and external drives",
   "version": "0.1.0",
   "author": "Vitals",
   "category": "monitor",
   "supportsTaskbarDisplay": true,
-  "supportedPlatforms": ["macos"],
+  "supportedPlatforms": ["windows", "macos"],
   "requiredHostVersion": "0.1.0"
 }
