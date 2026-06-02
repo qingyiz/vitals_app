@@ -140,7 +140,7 @@ Vitals is released under the [MIT License](LICENSE).
 
 ---
 
-# Vitals
+# 中文
 
 [English](#vitals) | 中文
 
