@@ -6,6 +6,8 @@
 class QStackedWidget;
 class QComboBox;
 class QLabel;
+class QPushButton;
+class QWidget;
 
 namespace Vitals {
 
@@ -68,11 +70,29 @@ private:
     /// Applies the current host visual theme and widget stylesheet.
     void applyStyle();
 
-    /// Builds and wires the status-bar language selector.
-    void setupLanguageSelector();
+    /// Builds the content-owned status bar that does not occupy the sidebar.
+    QWidget* createContentStatusBar(QWidget* parent);
+
+    /// Builds and wires the language selector for the content status bar.
+    void setupLanguageSelector(QWidget* parent);
+
+    /// Builds the compact host action buttons at the bottom of the sidebar.
+    QWidget* createSidebarActions(QWidget* parent);
+
+    /// Refreshes sidebar action labels and tooltips after language changes.
+    void refreshSidebarActions();
+
+    /// Opens the host plugin center page from the compact sidebar action.
+    void openPluginCenter();
+
+    /// Toggles host-level monitoring dispatch without changing plugin enable state.
+    void toggleMonitoring();
 
     /// Updates the language selector to match the active catalog.
     void refreshLanguageSelector();
+
+    /// Updates the content status message with optional timeout restoration.
+    void showStatusMessage(const QString& message, int timeoutMs = 0);
 
     /// Creates a consistent host-owned navigation icon from a semantic key.
     QIcon createNavigationIcon(const QString& iconKey) const;
@@ -92,8 +112,15 @@ private:
     PluginCenterWidget* m_pluginCenterPage = nullptr;
     NavigationWidget* m_navigation = nullptr;
     QStackedWidget* m_pages = nullptr;
+    QLabel* m_statusMessageLabel = nullptr;
     QLabel* m_languageLabel = nullptr;
     QComboBox* m_languageCombo = nullptr;
+    QPushButton* m_bugReportButton = nullptr;
+    QPushButton* m_pluginCenterButton = nullptr;
+    QPushButton* m_monitorToggleButton = nullptr;
+    QPushButton* m_quitButton = nullptr;
+    int m_statusMessageSerial = 0;
+    bool m_monitoringPaused = false;
 };
 
 } // namespace Vitals

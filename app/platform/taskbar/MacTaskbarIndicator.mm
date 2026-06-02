@@ -462,6 +462,24 @@ void MacTaskbarIndicator::refresh()
 
     m_nativeBridge->isRefreshing = true;
 
+    if (isDisplaySuppressed()) {
+        for (const NativeBridge::Entry& entry : m_nativeBridge->entries) {
+            if (entry.statusItem) {
+                NSStatusBarButton* button = [entry.statusItem button];
+                if (button) {
+                    [button setTitle:@""];
+                    [button setToolTip:@""];
+                    [button setImage:nil];
+                }
+                [entry.statusItem setMenu:nil];
+                [entry.statusItem setLength:0.01];
+                [entry.statusItem setVisible:YES];
+            }
+        }
+        m_nativeBridge->isRefreshing = false;
+        return;
+    }
+
     auto rebuildEntries = [this]() {
         for (const NativeBridge::Entry& entry : m_nativeBridge->entries) {
             NativeBridge::disposeEntry(entry);
@@ -531,6 +549,7 @@ void MacTaskbarIndicator::refresh()
             [button setToolTip:nsStringFromQString(tooltip)];
             [button setImage:nsImageFromQPixmap(pixmap, prefersSystemTintedText())];
             [button setImagePosition:NSImageOnly];
+            [entry.statusItem setMenu:entry.menu];
             [entry.statusItem setLength:logicalWidthFromQPixmap(pixmap) + 2.0];
 
             const TaskbarDetailContent content = detailContentForDisplay(display, values);

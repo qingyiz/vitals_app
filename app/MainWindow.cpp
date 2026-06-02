@@ -20,15 +20,19 @@
 #include <QColor>
 #include <QComboBox>
 #include <QCoreApplication>
+#include <QDesktopServices>
 #include <QDir>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPainter>
+#include <QPainterPath>
 #include <QPixmap>
+#include <QPushButton>
 #include <QSizePolicy>
 #include <QSignalBlocker>
 #include <QStackedWidget>
-#include <QStatusBar>
+#include <QTimer>
+#include <QUrl>
 #include <QVBoxLayout>
 
 namespace Vitals {
@@ -71,6 +75,80 @@ NavigationIconSpec iconSpecForKey(const QString& key)
     return {key.left(1).toUpper(), QColor(QStringLiteral("#8e8e93")), Qt::white};
 }
 
+enum class SidebarActionIcon
+{
+    Bug,
+    Plugins,
+    Pause,
+    Resume,
+    Quit
+};
+
+QIcon createSidebarActionIcon(SidebarActionIcon type, const QColor& color = QColor(QStringLiteral("#5f6368")))
+{
+    QPixmap pixmap(48, 48);
+    pixmap.fill(Qt::transparent);
+
+    QPainter painter(&pixmap);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    QPen pen(color, 3.2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+
+    switch (type) {
+    case SidebarActionIcon::Bug:
+        painter.drawEllipse(QRectF(15, 17, 18, 18));
+        painter.drawLine(QPointF(24, 12), QPointF(24, 17));
+        painter.drawLine(QPointF(18, 14), QPointF(21, 18));
+        painter.drawLine(QPointF(30, 14), QPointF(27, 18));
+        painter.drawLine(QPointF(14, 22), QPointF(9, 20));
+        painter.drawLine(QPointF(14, 28), QPointF(9, 30));
+        painter.drawLine(QPointF(34, 22), QPointF(39, 20));
+        painter.drawLine(QPointF(34, 28), QPointF(39, 30));
+        painter.drawLine(QPointF(24, 18), QPointF(24, 34));
+        break;
+    case SidebarActionIcon::Plugins:
+        painter.drawRoundedRect(QRectF(11, 11, 11, 11), 2.5, 2.5);
+        painter.drawRoundedRect(QRectF(26, 11, 11, 11), 2.5, 2.5);
+        painter.drawRoundedRect(QRectF(11, 26, 11, 11), 2.5, 2.5);
+        painter.drawRoundedRect(QRectF(26, 26, 11, 11), 2.5, 2.5);
+        break;
+    case SidebarActionIcon::Pause:
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(color);
+        painter.drawRoundedRect(QRectF(17, 13, 5.5, 22), 2.6, 2.6);
+        painter.drawRoundedRect(QRectF(25.5, 13, 5.5, 22), 2.6, 2.6);
+        break;
+    case SidebarActionIcon::Resume:
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(color);
+        {
+            QPainterPath playPath;
+            playPath.moveTo(18, 12);
+            playPath.lineTo(36, 24);
+            playPath.lineTo(18, 36);
+            playPath.closeSubpath();
+            painter.drawPath(playPath);
+        }
+        break;
+    case SidebarActionIcon::Quit:
+        painter.drawLine(QPointF(24, 10), QPointF(24, 22));
+
+        {
+            QPainterPath powerPath;
+            powerPath.moveTo(17.5, 17);
+            powerPath.cubicTo(13.4, 20.5, 11.7, 26.6, 14.2, 31.8);
+            powerPath.cubicTo(17.3, 38.2, 25.4, 40.5, 31.4, 36.7);
+            powerPath.cubicTo(37.5, 32.8, 38.3, 23.6, 30.5, 17);
+            painter.drawPath(powerPath);
+        }
+        break;
+    }
+
+    return QIcon(pixmap);
+}
+
 } // namespace
 
 MainWindow::MainWindow(QWidget* parent)
@@ -96,6 +174,7 @@ MainWindow::MainWindow(QWidget* parent)
     loadPlugins();
     rebuildPages();
     m_pluginManager->startAll();
+    m_monitoringPaused = false;
 }
 
 MainWindow::~MainWindow()
@@ -115,33 +194,50 @@ void MainWindow::setupUi()
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
 
-    m_navigation = new NavigationWidget(central);
-    m_pages = new QStackedWidget(central);
+    auto* sidebar = new QWidget(central);
+    sidebar->setObjectName(QStringLiteral("sidebar"));
+    sidebar->setFixedWidth(172);
+    auto* sidebarLayout = new QVBoxLayout(sidebar);
+    sidebarLayout->setContentsMargins(0, 0, 0, 6);
+    sidebarLayout->setSpacing(0);
+
+    auto* content = new QWidget(central);
+    content->setObjectName(QStringLiteral("contentShell"));
+    auto* contentLayout = new QVBoxLayout(content);
+    contentLayout->setContentsMargins(0, 0, 0, 0);
+    contentLayout->setSpacing(0);
+
+    m_navigation = new NavigationWidget(sidebar);
+    m_pages = new QStackedWidget(content);
     m_pages->setMinimumSize(0, 0);
     m_pages->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
 
-    layout->addWidget(m_navigation);
-    layout->addWidget(m_pages, 1);
+    sidebarLayout->addWidget(m_navigation, 1);
+    sidebarLayout->addWidget(createSidebarActions(sidebar));
+    contentLayout->addWidget(m_pages, 1);
+    contentLayout->addWidget(createContentStatusBar(content));
+
+    layout->addWidget(sidebar);
+    layout->addWidget(content, 1);
     setCentralWidget(central);
 
     connect(m_navigation, &QListWidget::currentRowChanged,
         m_pages, &QStackedWidget::setCurrentIndex);
-    setupLanguageSelector();
     rebuildPages();
 
-    statusBar()->showMessage(text(QStringLiteral("status.frameworkReady"), QStringLiteral("Framework ready")));
+    showStatusMessage(text(QStringLiteral("status.frameworkReady"), QStringLiteral("Framework ready")));
 }
 
 void MainWindow::loadPlugins()
 {
     connect(m_pluginManager, &PluginManager::pluginLoaded, this,
         [this](const QString& pluginId, const QString& pluginName) {
-            statusBar()->showMessage(text(QStringLiteral("status.pluginLoaded"), QStringLiteral("Loaded plugin: %1")).arg(pluginName), 3000);
+            showStatusMessage(text(QStringLiteral("status.pluginLoaded"), QStringLiteral("Loaded plugin: %1")).arg(pluginName), 3000);
             Q_UNUSED(pluginId)
         }, Qt::UniqueConnection);
     connect(m_pluginManager, &PluginManager::pluginSkipped, this,
         [this](const QString& path, const QString& reason) {
-            statusBar()->showMessage(text(QStringLiteral("status.pluginSkipped"), QStringLiteral("Skipped plugin: %1")).arg(reason), 3000);
+            showStatusMessage(text(QStringLiteral("status.pluginSkipped"), QStringLiteral("Skipped plugin: %1")).arg(reason), 3000);
             Q_UNUSED(path)
         }, Qt::UniqueConnection);
 
@@ -152,7 +248,7 @@ void MainWindow::loadPlugins()
         m_pluginCenterPage->setPluginInfos(m_pluginManager->pluginInfos());
     }
 
-    statusBar()->showMessage(text(QStringLiteral("status.pluginsLoaded"), QStringLiteral("Loaded %1 plugin(s)"))
+    showStatusMessage(text(QStringLiteral("status.pluginsLoaded"), QStringLiteral("Loaded %1 plugin(s)"))
         .arg(m_pluginManager->loadedPluginCount()));
 }
 
@@ -165,8 +261,10 @@ void MainWindow::reloadPlugins()
     m_pluginManager->shutdownAll();
     loadPlugins();
     rebuildPages(preferredPageId);
-    m_pluginManager->startAll();
-    statusBar()->showMessage(text(QStringLiteral("status.pluginEnableUpdated"), QStringLiteral("Plugin enable state updated")), 3000);
+    if (!m_monitoringPaused) {
+        m_pluginManager->startAll();
+    }
+    showStatusMessage(text(QStringLiteral("status.pluginEnableUpdated"), QStringLiteral("Plugin enable state updated")), 3000);
 }
 
 void MainWindow::clearLoadedPluginMetrics()
@@ -231,11 +329,34 @@ void MainWindow::addPage(const QString& id, const QString& title, QWidget* page,
     m_pages->addWidget(page);
 }
 
-void MainWindow::setupLanguageSelector()
+QWidget* MainWindow::createContentStatusBar(QWidget* parent)
 {
-    m_languageLabel = new QLabel(text(QStringLiteral("language.label"), QStringLiteral("Language")), this);
+    auto* bar = new QWidget(parent);
+    bar->setObjectName(QStringLiteral("contentStatusBar"));
+
+    auto* layout = new QHBoxLayout(bar);
+    layout->setContentsMargins(16, 6, 16, 6);
+    layout->setSpacing(10);
+
+    m_statusMessageLabel = new QLabel(bar);
+    m_statusMessageLabel->setObjectName(QStringLiteral("contentStatusMessage"));
+    m_statusMessageLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    m_statusMessageLabel->setMinimumWidth(0);
+
+    setupLanguageSelector(bar);
+
+    layout->addWidget(m_statusMessageLabel, 1);
+    layout->addWidget(m_languageLabel);
+    layout->addWidget(m_languageCombo);
+
+    return bar;
+}
+
+void MainWindow::setupLanguageSelector(QWidget* parent)
+{
+    m_languageLabel = new QLabel(text(QStringLiteral("language.label"), QStringLiteral("Language")), parent);
     m_languageLabel->setObjectName(QStringLiteral("languageSelectorLabel"));
-    m_languageCombo = new QComboBox(this);
+    m_languageCombo = new QComboBox(parent);
     m_languageCombo->setMinimumWidth(132);
 
     refreshLanguageSelector();
@@ -253,15 +374,160 @@ void MainWindow::setupLanguageSelector()
         const QString currentPageId = m_navigation ? m_navigation->currentItemId() : QString();
         setWindowTitle(text(QStringLiteral("app.title"), QStringLiteral("Vitals")));
         m_languageLabel->setText(text(QStringLiteral("language.label"), QStringLiteral("Language")));
+        refreshSidebarActions();
         refreshLanguageSelector();
         rebuildPages(currentPageId);
-        statusBar()->showMessage(text(QStringLiteral("status.languageChanged"), QStringLiteral("Language switched to %1"))
+        showStatusMessage(text(QStringLiteral("status.languageChanged"), QStringLiteral("Language switched to %1"))
                 .arg(m_languageCombo->currentText()),
             3000);
     });
+}
 
-    statusBar()->addPermanentWidget(m_languageLabel);
-    statusBar()->addPermanentWidget(m_languageCombo);
+QWidget* MainWindow::createSidebarActions(QWidget* parent)
+{
+    auto* container = new QWidget(parent);
+    container->setObjectName(QStringLiteral("sidebarActions"));
+
+    auto* layout = new QHBoxLayout(container);
+    layout->setContentsMargins(11, 4, 11, 0);
+    layout->setSpacing(8);
+    container->setMinimumHeight(42);
+
+    m_bugReportButton = new QPushButton(container);
+    m_bugReportButton->setObjectName(QStringLiteral("sidebarActionButton"));
+    m_bugReportButton->setIcon(createSidebarActionIcon(SidebarActionIcon::Bug));
+    m_bugReportButton->setFixedSize(30, 30);
+    m_bugReportButton->setIconSize(QSize(25, 25));
+    m_bugReportButton->setCursor(Qt::PointingHandCursor);
+    connect(m_bugReportButton, &QPushButton::clicked, this, [this]() {
+        const QUrl issueUrl(QStringLiteral("https://github.com/qingyiz/vitals_app/issues/new"));
+        if (!QDesktopServices::openUrl(issueUrl)) {
+            showStatusMessage(text(QStringLiteral("status.bugReportOpenFailed"),
+                QStringLiteral("Could not open bug report page")), 3000);
+            return;
+        }
+        showStatusMessage(text(QStringLiteral("status.bugReportOpened"),
+            QStringLiteral("Opened bug report page")), 3000);
+    });
+
+    m_pluginCenterButton = new QPushButton(container);
+    m_pluginCenterButton->setObjectName(QStringLiteral("sidebarActionButton"));
+    m_pluginCenterButton->setIcon(createSidebarActionIcon(SidebarActionIcon::Plugins));
+    m_pluginCenterButton->setFixedSize(30, 30);
+    m_pluginCenterButton->setIconSize(QSize(25, 25));
+    m_pluginCenterButton->setCursor(Qt::PointingHandCursor);
+    connect(m_pluginCenterButton, &QPushButton::clicked, this, &MainWindow::openPluginCenter);
+
+    m_monitorToggleButton = new QPushButton(container);
+    m_monitorToggleButton->setObjectName(QStringLiteral("sidebarActionButton"));
+    m_monitorToggleButton->setIcon(createSidebarActionIcon(SidebarActionIcon::Pause));
+    m_monitorToggleButton->setFixedSize(30, 30);
+    m_monitorToggleButton->setIconSize(QSize(25, 25));
+    m_monitorToggleButton->setCursor(Qt::PointingHandCursor);
+    connect(m_monitorToggleButton, &QPushButton::clicked, this, &MainWindow::toggleMonitoring);
+
+    m_quitButton = new QPushButton(container);
+    m_quitButton->setObjectName(QStringLiteral("sidebarQuitButton"));
+    m_quitButton->setIcon(createSidebarActionIcon(SidebarActionIcon::Quit));
+    m_quitButton->setFixedSize(30, 30);
+    m_quitButton->setIconSize(QSize(25, 25));
+    m_quitButton->setCursor(Qt::PointingHandCursor);
+    connect(m_quitButton, &QPushButton::clicked, qApp, &QApplication::quit);
+
+    layout->addWidget(m_bugReportButton);
+    layout->addWidget(m_pluginCenterButton);
+    layout->addWidget(m_monitorToggleButton);
+    layout->addWidget(m_quitButton);
+
+    refreshSidebarActions();
+    return container;
+}
+
+void MainWindow::refreshSidebarActions()
+{
+    if (m_bugReportButton) {
+        const QString bugReportText = text(QStringLiteral("sidebar.reportBug"), QStringLiteral("Report Bug"));
+        m_bugReportButton->setText(QString());
+        m_bugReportButton->setToolTip(bugReportText);
+        m_bugReportButton->setAccessibleName(bugReportText);
+    }
+    if (m_pluginCenterButton) {
+        const QString pluginCenterText = text(QStringLiteral("sidebar.pluginCenter"), QStringLiteral("Plugin Center"));
+        m_pluginCenterButton->setText(QString());
+        m_pluginCenterButton->setToolTip(pluginCenterText);
+        m_pluginCenterButton->setAccessibleName(pluginCenterText);
+    }
+    if (m_monitorToggleButton) {
+        const QString monitorText = m_monitoringPaused
+            ? text(QStringLiteral("sidebar.resumeMonitoring"), QStringLiteral("Resume Monitoring"))
+            : text(QStringLiteral("sidebar.pauseMonitoring"), QStringLiteral("Pause Monitoring"));
+        m_monitorToggleButton->setText(QString());
+        m_monitorToggleButton->setToolTip(monitorText);
+        m_monitorToggleButton->setAccessibleName(monitorText);
+        m_monitorToggleButton->setIcon(createSidebarActionIcon(
+            m_monitoringPaused ? SidebarActionIcon::Resume : SidebarActionIcon::Pause));
+    }
+    if (m_quitButton) {
+        const QString quitText = text(QStringLiteral("sidebar.quit"), QStringLiteral("Quit Vitals"));
+        m_quitButton->setText(QString());
+        m_quitButton->setToolTip(quitText);
+        m_quitButton->setAccessibleName(quitText);
+    }
+}
+
+void MainWindow::openPluginCenter()
+{
+    if (m_navigation && m_navigation->setCurrentItemById(QStringLiteral("plugins"))) {
+        showStatusMessage(text(QStringLiteral("status.pluginCenterOpened"),
+            QStringLiteral("Opened plugin center")), 3000);
+        return;
+    }
+
+    showStatusMessage(text(QStringLiteral("status.pluginCenterUnavailable"),
+        QStringLiteral("Plugin center is unavailable")), 3000);
+}
+
+void MainWindow::toggleMonitoring()
+{
+    if (m_monitoringPaused) {
+        m_pluginManager->startAll();
+        m_monitoringPaused = false;
+        m_taskbarIndicator->setDisplaySuppressed(false);
+        syncTaskbarDisplays();
+        refreshSidebarActions();
+        showStatusMessage(text(QStringLiteral("status.monitoringResumed"),
+            QStringLiteral("Monitoring resumed")), 3000);
+        return;
+    }
+
+    m_pluginManager->stopAll();
+    m_monitoringPaused = true;
+    m_taskbarIndicator->setDisplaySuppressed(true);
+    refreshSidebarActions();
+    showStatusMessage(text(QStringLiteral("status.monitoringPaused"),
+        QStringLiteral("Monitoring paused")), 3000);
+}
+
+void MainWindow::showStatusMessage(const QString& message, int timeoutMs)
+{
+    if (!m_statusMessageLabel) {
+        return;
+    }
+
+    ++m_statusMessageSerial;
+    const int serial = m_statusMessageSerial;
+    m_statusMessageLabel->setText(message);
+
+    if (timeoutMs <= 0) {
+        return;
+    }
+
+    QTimer::singleShot(timeoutMs, this, [this, serial]() {
+        if (serial != m_statusMessageSerial || !m_statusMessageLabel) {
+            return;
+        }
+        m_statusMessageLabel->setText(text(QStringLiteral("status.frameworkReady"), QStringLiteral("Framework ready")));
+    });
 }
 
 void MainWindow::refreshLanguageSelector()
@@ -343,7 +609,7 @@ QWidget* MainWindow::createPluginManagerPage()
         [this](const QString& pluginId, const QString& filePath, bool enabled) {
             m_configManager->setPluginTaskbarEnabled(pluginId, filePath, enabled);
             syncTaskbarDisplays();
-            statusBar()->showMessage(text(QStringLiteral("status.taskbarVisibilityUpdated"),
+            showStatusMessage(text(QStringLiteral("status.taskbarVisibilityUpdated"),
                 QStringLiteral("Updated menu bar visibility for %1")).arg(pluginId), 3000);
         });
     return m_pluginCenterPage;
@@ -408,8 +674,15 @@ void MainWindow::applyStyle()
         QMainWindow, QStackedWidget {
             background: #f5f5f7;
         }
+        QWidget#sidebar {
+            background: #e9e9ed;
+            border-right: 1px solid #d5d5da;
+        }
+        QWidget#contentShell {
+            background: #f5f5f7;
+        }
         QListWidget#navigation {
-            background: #ececf1;
+            background: transparent;
             color: #34343a;
             border: none;
             padding: 12px 10px;
@@ -424,6 +697,35 @@ void MainWindow::applyStyle()
             background: rgba(10, 132, 255, 0.14);
             color: #0057c2;
             font-weight: 600;
+        }
+        QWidget#sidebarActions {
+            background: transparent;
+        }
+        QPushButton#sidebarActionButton,
+        QPushButton#sidebarQuitButton {
+            background: transparent;
+            border: none;
+            border-radius: 16px;
+            padding: 0;
+            color: #5f6368;
+        }
+        QPushButton#sidebarActionButton:hover {
+            background: rgba(60, 60, 67, 0.08);
+        }
+        QPushButton#sidebarQuitButton:hover {
+            background: rgba(255, 69, 58, 0.14);
+        }
+        QPushButton#sidebarActionButton:pressed,
+        QPushButton#sidebarQuitButton:pressed {
+            background: rgba(60, 60, 67, 0.14);
+        }
+        QWidget#contentStatusBar {
+            background: #f5f5f7;
+            border-top: 1px solid #dedee3;
+        }
+        QLabel#contentStatusMessage {
+            color: #6e6e73;
+            font-size: 12px;
         }
         QLabel#languageSelectorLabel {
             color: #6e6e73;
@@ -564,10 +866,6 @@ void MainWindow::applyStyle()
         QLabel#panelBody {
             color: #6e6e73;
             font-size: 13px;
-        }
-        QStatusBar {
-            background: #f5f5f7;
-            color: #6e6e73;
         }
     )"));
 }

@@ -252,6 +252,16 @@ void TaskbarIndicator::setPluginDisplays(const QList<TaskbarPluginDisplay>& plug
     refresh();
 }
 
+void TaskbarIndicator::setDisplaySuppressed(bool suppressed)
+{
+    if (m_displaySuppressed == suppressed) {
+        return;
+    }
+
+    m_displaySuppressed = suppressed;
+    refresh();
+}
+
 QString TaskbarIndicator::idleText() const
 {
     return QStringLiteral("OK");
@@ -381,6 +391,11 @@ bool TaskbarIndicator::hasPluginDisplays() const
     return !m_pluginDisplays.isEmpty();
 }
 
+bool TaskbarIndicator::isDisplaySuppressed() const
+{
+    return m_displaySuppressed;
+}
+
 const QList<TaskbarPluginDisplay>& TaskbarIndicator::pluginDisplays() const
 {
     return m_pluginDisplays;
@@ -422,7 +437,7 @@ void TaskbarIndicator::showDetailMenuNear(const QRect& anchorRect)
 
 void TaskbarIndicator::showDetailMenuNear(const QList<TaskbarDetailContent>& contents, const QRect& anchorRect)
 {
-    if (!m_menu || !hasPluginDisplays()) {
+    if (!m_menu || !hasPluginDisplays() || isDisplaySuppressed()) {
         return;
     }
 
@@ -587,10 +602,12 @@ void TaskbarIndicator::refresh()
         return;
     }
 
-    if (!hasPluginDisplays()) {
+    if (!hasPluginDisplays() || isDisplaySuppressed()) {
         m_trayIcon->hide();
         if (m_summaryAction) {
-            m_summaryAction->setText(QStringLiteral("Vitals: taskbar display disabled"));
+            m_summaryAction->setText(isDisplaySuppressed()
+                    ? QStringLiteral("Vitals: taskbar display paused")
+                    : QStringLiteral("Vitals: taskbar display disabled"));
         }
         if (m_detailWidget) {
             m_detailWidget->setContents({});
