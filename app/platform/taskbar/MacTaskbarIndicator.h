@@ -13,6 +13,8 @@ public:
     ~MacTaskbarIndicator() override;
 
     void initialize(QWidget* mainWindow) override;
+    bool supportsDockIconVisibility() const override;
+    void setDockIconVisible(bool visible) override;
 
 protected:
     QString platformName() const override;
@@ -22,6 +24,7 @@ protected:
     bool prefersSystemTintedText() const override;
     int maximumVisibleLabelLength() const override;
     void refresh() override;
+    void hostActionTextsChanged() override;
 
 private:
     class NativeBridge;

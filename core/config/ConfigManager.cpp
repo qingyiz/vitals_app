@@ -50,6 +50,23 @@ bool ConfigManager::setLanguage(const QString& languageCode)
     return saveAppConfig(rootObject);
 }
 
+bool ConfigManager::showDockIcon() const
+{
+    return loadAppConfig().value(QStringLiteral("showDockIcon")).toBool(true);
+}
+
+bool ConfigManager::setShowDockIcon(bool visible)
+{
+    QDir rootDir(m_rootPath);
+    if (!rootDir.exists() && !rootDir.mkpath(QStringLiteral("."))) {
+        return false;
+    }
+
+    QJsonObject rootObject = loadAppConfig();
+    rootObject.insert(QStringLiteral("showDockIcon"), visible);
+    return saveAppConfig(rootObject);
+}
+
 bool ConfigManager::isPluginEnabled(const QString& pluginId, const QString& filePath) const
 {
     const QJsonObject root = loadAppConfig();

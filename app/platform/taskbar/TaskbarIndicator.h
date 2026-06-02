@@ -120,6 +120,38 @@ public:
      */
     void setDisplaySuppressed(bool suppressed);
 
+    /**
+     * \if ENGLISH
+     * @brief Returns whether this platform indicator can reopen the hidden main window
+     * \endif
+     *
+     * \if CHINESE
+     * @brief 返回该平台指示器是否可用于重新打开隐藏后的主窗口
+     * \endif
+     */
+    bool isAvailable() const;
+
+    /// Returns whether the platform supports toggling the application Dock icon.
+    virtual bool supportsDockIconVisibility() const;
+
+    /// Applies the platform Dock icon visibility policy when supported.
+    virtual void setDockIconVisible(bool visible);
+
+    /**
+     * \if ENGLISH
+     * @brief Updates localized host action text used by tray/menu-bar entries
+     * \endif
+     *
+     * \if CHINESE
+     * @brief 更新托盘 / 菜单栏入口使用的宿主动作本地化文案
+     * \endif
+     */
+    void setHostActionTexts(
+        const QString& showWindowText,
+        const QString& quitText,
+        const QString& runningText,
+        const QString& pausedText);
+
     /// Emits the host-level show request.
     void emitShowRequested();
 
@@ -164,8 +196,16 @@ protected:
     /// Returns the host window associated with this indicator.
     QWidget* mainWindow() const;
 
+    QString showWindowText() const;
+    QString quitText() const;
+    QString runningText() const;
+    QString pausedText() const;
+
     /// Binds the host window without creating any tray resources.
     void setMainWindow(QWidget* mainWindow);
+
+    /// Marks whether the platform indicator can be used as a background entry point.
+    void setAvailable(bool available);
 
     /// Returns whether any plugin currently participates in taskbar display.
     bool hasPluginDisplays() const;
@@ -196,6 +236,7 @@ protected:
     QPixmap buildPixmap(const QString& label) const;
 
     virtual void refresh();
+    virtual void hostActionTextsChanged();
 
 private:
     void handleMetricUpdated(const MetricValue& value);
@@ -213,7 +254,12 @@ private:
     QAction* m_quitAction = nullptr;
     QHash<QString, MetricValue> m_latestValues;
     QList<TaskbarPluginDisplay> m_pluginDisplays;
+    QString m_showWindowText = QStringLiteral("Show Vitals");
+    QString m_quitText = QStringLiteral("Quit Vitals");
+    QString m_runningText = QStringLiteral("Running in background");
+    QString m_pausedText = QStringLiteral("Monitoring display paused");
     bool m_displaySuppressed = false;
+    bool m_available = false;
 };
 
 } // namespace Vitals

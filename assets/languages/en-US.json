@@ -6,6 +6,8 @@
   "translations": {
     "app.title": "Vitals",
     "language.label": "Language",
+    "settings.showDockIcon": "Dock",
+    "settings.showDockIcon.tooltip": "Show Vitals in the macOS Dock. When disabled, reopen the window from the menu bar item.",
 
     "nav.dashboard": "Dashboard",
     "nav.plugins": "Plugins",
@@ -19,6 +21,9 @@
     "sidebar.pauseMonitoring": "Pause Monitoring",
     "sidebar.resumeMonitoring": "Resume Monitoring",
     "sidebar.quit": "Quit Vitals",
+    "taskbar.showWindow": "Show Vitals",
+    "taskbar.runningInBackground": "Running in background",
+    "taskbar.monitoringDisplayPaused": "Monitoring display paused",
 
     "status.frameworkReady": "Framework ready",
     "status.pluginLoaded": "Loaded plugin: %1",
@@ -33,6 +38,11 @@
     "status.pluginCenterUnavailable": "Plugin center is unavailable",
     "status.monitoringPaused": "Monitoring paused",
     "status.monitoringResumed": "Monitoring resumed",
+    "status.windowHidden": "Vitals is still running in the background",
+    "status.windowMinimized": "Vitals was minimized because no tray entry is available",
+    "status.dockIconShown": "Vitals will stay visible in the Dock while running in the background",
+    "status.dockIconHiddenInBackground": "Vitals will hide from the Dock after the main window is closed",
+    "status.dockIconHidden": "Vitals is hidden from the Dock. Use the menu bar item to reopen it.",
 
     "dashboard.title": "Overview",
     "dashboard.waitingMetrics": "Waiting for metrics",

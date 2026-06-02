@@ -10,6 +10,7 @@ int main(int argc, char* argv[])
     QApplication::setApplicationVersion(QStringLiteral("0.1.0"));
     QApplication::setOrganizationName(QStringLiteral("Vitals"));
     QApplication::setWindowIcon(QIcon(QStringLiteral(":/icons/app-icon.svg")));
+    QApplication::setQuitOnLastWindowClosed(false);
 
     Vitals::MainWindow window;
     window.setWindowIcon(QApplication::windowIcon());

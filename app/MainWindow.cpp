@@ -9,6 +9,7 @@
 #include "ITaskbarDisplayPlugin.h"
 #include "NavigationWidget.h"
 #include "PluginCenterWidget.h"
+#include "ToggleSwitch.h"
 #include "config/ConfigManager.h"
 #include "language/LanguageManager.h"
 #include "metric/MetricCenter.h"
@@ -17,6 +18,7 @@
 #include "plugin/PluginManager.h"
 
 #include <QApplication>
+#include <QCloseEvent>
 #include <QColor>
 #include <QComboBox>
 #include <QCoreApplication>
@@ -161,10 +163,14 @@ MainWindow::MainWindow(QWidget* parent)
     , m_taskbarIndicator(createTaskbarIndicator(this))
 {
     m_languageManager->initialize(m_configManager->language());
+    refreshTaskbarHostActions();
     setupUi();
     m_taskbarIndicator->initialize(this);
     m_taskbarIndicator->bindMetricCenter(m_metricCenter);
     connect(m_taskbarIndicator, &TaskbarIndicator::showRequested, this, [this]() {
+        if (m_taskbarIndicator && m_taskbarIndicator->supportsDockIconVisibility()) {
+            m_taskbarIndicator->setDockIconVisible(true);
+        }
         showNormal();
         raise();
         activateWindow();
@@ -182,6 +188,23 @@ MainWindow::~MainWindow()
     m_pluginManager->shutdownAll();
     delete m_appContext;
     delete m_configManager;
+}
+
+void MainWindow::closeEvent(QCloseEvent* event)
+{
+    event->ignore();
+
+    if (m_taskbarIndicator && m_taskbarIndicator->isAvailable()) {
+        hide();
+        applyWindowPresencePolicy();
+        showStatusMessage(text(QStringLiteral("status.windowHidden"),
+            QStringLiteral("Vitals is still running in the background")), 3000);
+        return;
+    }
+
+    showMinimized();
+    showStatusMessage(text(QStringLiteral("status.windowMinimized"),
+        QStringLiteral("Vitals was minimized because no tray entry is available")), 3000);
 }
 
 void MainWindow::setupUi()
@@ -344,8 +367,13 @@ QWidget* MainWindow::createContentStatusBar(QWidget* parent)
     m_statusMessageLabel->setMinimumWidth(0);
 
     setupLanguageSelector(bar);
+    setupDockIconSelector(bar);
 
     layout->addWidget(m_statusMessageLabel, 1);
+    if (m_dockIconLabel && m_dockIconSwitch) {
+        layout->addWidget(m_dockIconLabel);
+        layout->addWidget(m_dockIconSwitch);
+    }
     layout->addWidget(m_languageLabel);
     layout->addWidget(m_languageCombo);
 
@@ -374,11 +402,59 @@ void MainWindow::setupLanguageSelector(QWidget* parent)
         const QString currentPageId = m_navigation ? m_navigation->currentItemId() : QString();
         setWindowTitle(text(QStringLiteral("app.title"), QStringLiteral("Vitals")));
         m_languageLabel->setText(text(QStringLiteral("language.label"), QStringLiteral("Language")));
+        if (m_dockIconLabel) {
+            const QString dockText = text(QStringLiteral("settings.showDockIcon"), QStringLiteral("Dock"));
+            const QString dockTooltip = text(QStringLiteral("settings.showDockIcon.tooltip"),
+                QStringLiteral("Show Vitals in the macOS Dock. When disabled, reopen the window from the menu bar item."));
+            m_dockIconLabel->setText(dockText);
+            m_dockIconLabel->setToolTip(dockTooltip);
+            if (m_dockIconSwitch) {
+                m_dockIconSwitch->setToolTip(dockTooltip);
+                m_dockIconSwitch->setAccessibleName(dockText);
+            }
+        }
         refreshSidebarActions();
+        refreshTaskbarHostActions();
         refreshLanguageSelector();
         rebuildPages(currentPageId);
         showStatusMessage(text(QStringLiteral("status.languageChanged"), QStringLiteral("Language switched to %1"))
                 .arg(m_languageCombo->currentText()),
+            3000);
+    });
+}
+
+void MainWindow::setupDockIconSelector(QWidget* parent)
+{
+    if (!m_taskbarIndicator || !m_taskbarIndicator->supportsDockIconVisibility()) {
+        return;
+    }
+
+    const QString dockText = text(QStringLiteral("settings.showDockIcon"), QStringLiteral("Dock"));
+    const QString dockTooltip = text(QStringLiteral("settings.showDockIcon.tooltip"),
+        QStringLiteral("Show Vitals in the macOS Dock. When disabled, reopen the window from the menu bar item."));
+    m_dockIconLabel = new QLabel(dockText, parent);
+    m_dockIconLabel->setObjectName(QStringLiteral("languageSelectorLabel"));
+    m_dockIconLabel->setToolTip(dockTooltip);
+
+    m_dockIconSwitch = new ToggleSwitch(parent);
+    m_dockIconSwitch->setChecked(m_configManager->showDockIcon());
+    m_dockIconSwitch->setToolTip(dockTooltip);
+    m_dockIconSwitch->setAccessibleName(dockText);
+
+    connect(m_dockIconSwitch, &ToggleSwitch::toggled, this, [this](bool checked) {
+        m_configManager->setShowDockIcon(checked);
+        applyWindowPresencePolicy();
+        if (checked) {
+            showStatusMessage(text(QStringLiteral("status.dockIconShown"),
+                QStringLiteral("Vitals will stay visible in the Dock while running in the background")), 3000);
+            return;
+        }
+
+        showStatusMessage(isVisible()
+                ? text(QStringLiteral("status.dockIconHiddenInBackground"),
+                    QStringLiteral("Vitals will hide from the Dock after the main window is closed"))
+                : text(QStringLiteral("status.dockIconHidden"),
+                    QStringLiteral("Vitals is hidden from the Dock. Use the menu bar item to reopen it.")),
             3000);
     });
 }
@@ -475,6 +551,19 @@ void MainWindow::refreshSidebarActions()
     }
 }
 
+void MainWindow::refreshTaskbarHostActions()
+{
+    if (!m_taskbarIndicator) {
+        return;
+    }
+
+    m_taskbarIndicator->setHostActionTexts(
+        text(QStringLiteral("taskbar.showWindow"), QStringLiteral("Show Vitals")),
+        text(QStringLiteral("sidebar.quit"), QStringLiteral("Quit Vitals")),
+        text(QStringLiteral("taskbar.runningInBackground"), QStringLiteral("Running in background")),
+        text(QStringLiteral("taskbar.monitoringDisplayPaused"), QStringLiteral("Monitoring display paused")));
+}
+
 void MainWindow::openPluginCenter()
 {
     if (m_navigation && m_navigation->setCurrentItemById(QStringLiteral("plugins"))) {
@@ -550,6 +639,17 @@ void MainWindow::refreshLanguageSelector()
     if (currentIndex >= 0) {
         m_languageCombo->setCurrentIndex(currentIndex);
     }
+}
+
+void MainWindow::applyWindowPresencePolicy()
+{
+    if (!m_taskbarIndicator || !m_taskbarIndicator->supportsDockIconVisibility()) {
+        return;
+    }
+
+    const bool foregroundWindowVisible = isVisible() && !isHidden();
+    m_taskbarIndicator->setDockIconVisible(
+        foregroundWindowVisible ? true : m_configManager->showDockIcon());
 }
 
 QIcon MainWindow::createNavigationIcon(const QString& iconKey) const
