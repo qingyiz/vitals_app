@@ -591,6 +591,9 @@ QString MainWindow::navigationTitleForPage(const QString& id, const QString& tit
     if (id == QStringLiteral("network")) {
         return text(QStringLiteral("nav.network"), QStringLiteral("Network"));
     }
+    if (id == QStringLiteral("disk")) {
+        return text(QStringLiteral("nav.disk"), QStringLiteral("Disk"));
+    }
     if (id == QStringLiteral("systeminfo")) {
         return text(QStringLiteral("nav.systemInfo"), QStringLiteral("System Info"));
     }

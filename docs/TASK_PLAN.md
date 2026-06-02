@@ -30,6 +30,7 @@ cmake --build build
 build/bin/Vitals
 build/bin/plugins/libCpuMonitorPlugin.so
 build/bin/plugins/libSystemInfoPlugin.so
+build/bin/plugins/libDiskMonitorPlugin.so
 ```
 
 ### 1. 项目基础结构
@@ -114,18 +115,20 @@ docs/
 
 ### 6. 监控插件
 
-已完成 `CpuMonitorPlugin`、`NetworkMonitorPlugin` 与 `SystemInfoPlugin`：
+已完成 `CpuMonitorPlugin`、`NetworkMonitorPlugin`、`SystemInfoPlugin` 与 macOS 首版 `DiskMonitorPlugin`：
 
 - 作为动态插件构建。
 - 使用“插件壳 + capability 对象”结构。
 - CPU 插件发布总使用率、每核使用率、逻辑核心数等指标。
 - Network 插件发布主网卡、实时上下行速率、累计流量等指标。
 - SystemInfo 插件发布设备、系统、硬件和运行时长等指标。
+- Disk 插件发布当前挂载卷、挂载路径、文件系统、容量和使用率等指标，并支持选择要监控的挂载卷。
 - 每个插件内部都已拆出 `monitor/`、`panel/`、`taskbar/`、`settings/` 目录。
 - 监控类 capability 继续通过 `Collector + Factory + platform/*` 组织跨平台采集实现。
-- 插件元信息分别位于 `plugins/cpu/cpu_plugin.json`、`plugins/network/network_plugin.json`、`plugins/systeminfo/systeminfo_plugin.json`。
+- 插件元信息分别位于 `plugins/cpu/cpu_plugin.json`、`plugins/network/network_plugin.json`、`plugins/systeminfo/systeminfo_plugin.json`、`plugins/disk/disk_plugin.json`。
 - 当前已实现平台通过 `supportedPlatforms` 明确声明。
 - CPU 插件当前已支持 macOS 与 Windows，Windows 采集层位于 `plugins/cpu/platform/windows/`。
+- Disk 插件当前声明支持 macOS；外接硬盘在系统完成挂载后会作为可选挂载卷进入监控列表。
 
 插件输出目录已统一为：
 
@@ -174,7 +177,8 @@ build/bin/plugins/
 ### 插件
 
 - `CpuMonitorPlugin`、`NetworkMonitorPlugin`、`SystemInfoPlugin` 已完成 capability 化重构。
-- 三个插件都已经验证“插件壳 + monitor/panel/taskbar/settings capability”模式。
+- `DiskMonitorPlugin` 已完成 macOS 首版接入，并支持 monitor/panel/taskbar/settings capability。
+- 这些插件都已经验证“插件壳 + monitor/panel/taskbar/settings capability”模式。
 - capability 化后，平台差异继续只下沉在 collector / platform 目录，不回流到插件主类。
 
 ## 下一阶段计划
@@ -215,7 +219,7 @@ build/bin/plugins/
 ### 第五阶段：核心监控插件扩展
 
 - MemoryMonitorPlugin
-- DiskMonitorPlugin
+- DiskMonitorPlugin 平台扩展与读写速率采集
 - BatteryMonitorPlugin
 
 ### 第六阶段：复杂插件后置

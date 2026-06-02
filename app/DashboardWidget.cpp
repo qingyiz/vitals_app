@@ -355,6 +355,7 @@ QString DashboardWidget::pluginTitle(const QString& pluginId) const
     if (pluginId == QStringLiteral("com.vitals.cpu")) return text(QStringLiteral("plugin.com.vitals.cpu"), QStringLiteral("CPU Monitor"));
     if (pluginId == QStringLiteral("com.vitals.memory")) return text(QStringLiteral("plugin.com.vitals.memory"), QStringLiteral("Memory Monitor"));
     if (pluginId == QStringLiteral("com.vitals.network")) return text(QStringLiteral("plugin.com.vitals.network"), QStringLiteral("Network Monitor"));
+    if (pluginId == QStringLiteral("com.vitals.disk")) return text(QStringLiteral("plugin.com.vitals.disk"), QStringLiteral("Disk Monitor"));
     if (pluginId == QStringLiteral("com.vitals.systeminfo")) return text(QStringLiteral("plugin.com.vitals.systeminfo"), QStringLiteral("System Info"));
     return pluginId;
 }
@@ -364,6 +365,7 @@ QString DashboardWidget::primaryMetricKeyForPlugin(const QString& pluginId) cons
     if (pluginId == QStringLiteral("com.vitals.cpu")) return QStringLiteral("cpu.usage.total");
     if (pluginId == QStringLiteral("com.vitals.memory")) return QStringLiteral("memory.usage.percent");
     if (pluginId == QStringLiteral("com.vitals.network")) return QStringLiteral("network.download.rate");
+    if (pluginId == QStringLiteral("com.vitals.disk")) return QStringLiteral("disk.usage.percent");
     if (pluginId == QStringLiteral("com.vitals.systeminfo")) return QStringLiteral("system.memory.total.bytes");
     return {};
 }
@@ -417,6 +419,16 @@ QString DashboardWidget::summaryHintForPlugin(const QString& pluginId) const
         }
     }
 
+    if (pluginId == QStringLiteral("com.vitals.disk")) {
+        const QString name = pluginValues.value(QStringLiteral("disk.selected.name")).value.toString();
+        const qint64 available = pluginValues.value(QStringLiteral("disk.bytes.available")).value.toLongLong();
+        const qint64 total = pluginValues.value(QStringLiteral("disk.bytes.total")).value.toLongLong();
+        if (!name.isEmpty() && total > 0) {
+            return text(QStringLiteral("dashboard.diskAvailable"), QStringLiteral("%1 | %2 available of %3"))
+                .arg(name, formatBytes(available), formatBytes(total));
+        }
+    }
+
     const auto values = pluginValues.values();
     if (!values.isEmpty()) {
         return displayHintForMetric(values.first());
@@ -450,6 +462,16 @@ QString DashboardWidget::displayTitleForMetric(const QString& key) const
     if (key == QStringLiteral("network.download.rate")) return text(QStringLiteral("metric.network.download"), QStringLiteral("Download"));
     if (key == QStringLiteral("network.download.total.bytes")) return text(QStringLiteral("metric.network.download.total.bytes"), QStringLiteral("Total Received"));
     if (key == QStringLiteral("network.upload.total.bytes")) return text(QStringLiteral("metric.network.upload.total.bytes"), QStringLiteral("Total Sent"));
+    if (key == QStringLiteral("disk.selected.name")) return text(QStringLiteral("metric.disk.selected.name"), QStringLiteral("Selected Disk"));
+    if (key == QStringLiteral("disk.selected.root")) return text(QStringLiteral("metric.disk.selected.root"), QStringLiteral("Mount Path"));
+    if (key == QStringLiteral("disk.selected.device")) return text(QStringLiteral("metric.disk.selected.device"), QStringLiteral("Device"));
+    if (key == QStringLiteral("disk.selected.filesystem")) return text(QStringLiteral("metric.disk.selected.filesystem"), QStringLiteral("File System"));
+    if (key == QStringLiteral("disk.selected.kind")) return text(QStringLiteral("metric.disk.selected.kind"), QStringLiteral("Disk Kind"));
+    if (key == QStringLiteral("disk.usage.percent")) return text(QStringLiteral("metric.disk.usage.percent"), QStringLiteral("Disk Usage"));
+    if (key == QStringLiteral("disk.bytes.total")) return text(QStringLiteral("metric.disk.bytes.total"), QStringLiteral("Total Capacity"));
+    if (key == QStringLiteral("disk.bytes.used")) return text(QStringLiteral("metric.disk.bytes.used"), QStringLiteral("Used Capacity"));
+    if (key == QStringLiteral("disk.bytes.available")) return text(QStringLiteral("metric.disk.bytes.available"), QStringLiteral("Available Capacity"));
+    if (key == QStringLiteral("disk.count")) return text(QStringLiteral("metric.disk.count"), QStringLiteral("Mounted Disks"));
     if (key == QStringLiteral("disk.read.speed")) return text(QStringLiteral("metric.disk.read.speed"), QStringLiteral("Disk Read"));
     if (key == QStringLiteral("disk.write.speed")) return text(QStringLiteral("metric.disk.write.speed"), QStringLiteral("Disk Write"));
     if (key == QStringLiteral("battery.level.percent")) return text(QStringLiteral("metric.battery.level.percent"), QStringLiteral("Battery"));
