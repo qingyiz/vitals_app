@@ -19,11 +19,11 @@ PluginMetaInfo DiskMonitorPlugin::metaInfo() const
     return {
         QStringLiteral("com.vitals.disk"),
         QStringLiteral("Disk Monitor"),
-        QStringLiteral("macOS mounted disk capacity monitor with selectable internal and external drives."),
+        QStringLiteral("Mounted disk capacity monitor with selectable internal and external drives."),
         QStringLiteral("0.1.0"),
         QStringLiteral("Vitals"),
         QStringLiteral("monitor"),
-        {QStringLiteral("macos")},
+        {QStringLiteral("windows"), QStringLiteral("macos")},
         QStringLiteral("0.1.0"),
         true
     };

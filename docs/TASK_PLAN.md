@@ -115,7 +115,7 @@ docs/
 
 ### 6. 监控插件
 
-已完成 `CpuMonitorPlugin`、`NetworkMonitorPlugin`、`SystemInfoPlugin` 与 macOS 首版 `DiskMonitorPlugin`：
+已完成 `CpuMonitorPlugin`、`NetworkMonitorPlugin`、`SystemInfoPlugin` 与 Windows/macOS `DiskMonitorPlugin`：
 
 - 作为动态插件构建。
 - 使用“插件壳 + capability 对象”结构。
@@ -128,7 +128,7 @@ docs/
 - 插件元信息分别位于 `plugins/cpu/cpu_plugin.json`、`plugins/network/network_plugin.json`、`plugins/systeminfo/systeminfo_plugin.json`、`plugins/disk/disk_plugin.json`。
 - 当前已实现平台通过 `supportedPlatforms` 明确声明。
 - CPU 插件当前已支持 macOS 与 Windows，Windows 采集层位于 `plugins/cpu/platform/windows/`。
-- Disk 插件当前声明支持 macOS；采集实现位于 `plugins/disk/platform/macos/`，外接硬盘在系统完成挂载后会作为可选挂载卷进入监控列表。
+- Disk 插件当前声明支持 Windows 与 macOS；采集实现位于 `plugins/disk/platform/windows/` 和 `plugins/disk/platform/macos/`。Windows 通过 Win32 已挂载盘符枚举支持切换磁盘，并在系统完成挂载后把外接硬盘纳入可选监控列表。
 
 插件输出目录已统一为：
 
@@ -177,7 +177,7 @@ build/bin/plugins/
 ### 插件
 
 - `CpuMonitorPlugin`、`NetworkMonitorPlugin`、`SystemInfoPlugin` 已完成 capability 化重构。
-- `DiskMonitorPlugin` 已完成 macOS 首版接入，并支持 monitor/panel/taskbar/settings capability。
+- `DiskMonitorPlugin` 已完成 Windows/macOS 接入，并支持 monitor/panel/taskbar/settings capability。
 - 这些插件都已经验证“插件壳 + monitor/panel/taskbar/settings capability”模式。
 - capability 化后，平台差异继续只下沉在 collector / platform 目录，不回流到插件主类。
 
@@ -219,7 +219,7 @@ build/bin/plugins/
 ### 第五阶段：核心监控插件扩展
 
 - MemoryMonitorPlugin
-- DiskMonitorPlugin 平台扩展与读写速率采集
+- DiskMonitorPlugin Linux 平台扩展与读写速率采集
 - BatteryMonitorPlugin
 
 ### 第六阶段：复杂插件后置
