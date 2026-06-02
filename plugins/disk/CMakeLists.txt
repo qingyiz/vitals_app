@@ -14,10 +14,16 @@ add_library(DiskMonitorPlugin MODULE
     IDiskCollector.h
     DiskCollectorFactory.h
     DiskCollectorFactory.cpp
-    QtStorageInfoDiskCollector.h
-    QtStorageInfoDiskCollector.cpp
     disk_plugin.json
 )
+
+if(APPLE)
+    target_sources(DiskMonitorPlugin
+        PRIVATE
+            platform/macos/MacDiskCollector.h
+            platform/macos/MacDiskCollector.cpp
+    )
+endif()
 
 target_include_directories(DiskMonitorPlugin
     PRIVATE

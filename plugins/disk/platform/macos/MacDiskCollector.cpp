@@ -1,4 +1,4 @@
-#include "QtStorageInfoDiskCollector.h"
+#include "platform/macos/MacDiskCollector.h"
 
 #include <QDir>
 #include <QStorageInfo>
@@ -7,12 +7,12 @@
 
 namespace Vitals {
 
-bool QtStorageInfoDiskCollector::initialize()
+bool MacDiskCollector::initialize()
 {
     return true;
 }
 
-DiskSnapshot QtStorageInfoDiskCollector::collect(const QString& selectedRootPath)
+DiskSnapshot MacDiskCollector::collect(const QString& selectedRootPath)
 {
     QList<DiskInfo> disks;
     const QList<QStorageInfo> mountedVolumes = QStorageInfo::mountedVolumes();
@@ -50,7 +50,7 @@ DiskSnapshot QtStorageInfoDiskCollector::collect(const QString& selectedRootPath
     return snapshot;
 }
 
-DiskInfo QtStorageInfoDiskCollector::toDiskInfo(const QStorageInfo& storage)
+DiskInfo MacDiskCollector::toDiskInfo(const QStorageInfo& storage)
 {
     DiskInfo info;
     info.rootPath = QDir::toNativeSeparators(storage.rootPath());
@@ -70,25 +70,14 @@ DiskInfo QtStorageInfoDiskCollector::toDiskInfo(const QStorageInfo& storage)
     return info;
 }
 
-QString QtStorageInfoDiskCollector::normalizedRootPath(const QString& path)
+QString MacDiskCollector::normalizedRootPath(const QString& path)
 {
     return QDir::cleanPath(QDir::fromNativeSeparators(path)).toLower();
 }
 
-bool QtStorageInfoDiskCollector::isLikelyExternalVolume(const QString& rootPath)
+bool MacDiskCollector::isLikelyExternalVolume(const QString& rootPath)
 {
-    const QString path = normalizedRootPath(rootPath);
-#if defined(Q_OS_MAC)
-    return path.startsWith(QStringLiteral("/volumes/"));
-#elif defined(Q_OS_WIN)
-    return path.size() >= 2 && path.at(1) == QLatin1Char(':') && !path.startsWith(QStringLiteral("c:"));
-#elif defined(Q_OS_LINUX)
-    return path.startsWith(QStringLiteral("/media/"))
-        || path.startsWith(QStringLiteral("/run/media/"))
-        || path.startsWith(QStringLiteral("/mnt/"));
-#else
-    return false;
-#endif
+    return normalizedRootPath(rootPath).startsWith(QStringLiteral("/volumes/"));
 }
 
 } // namespace Vitals

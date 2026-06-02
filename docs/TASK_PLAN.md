@@ -128,7 +128,7 @@ docs/
 - 插件元信息分别位于 `plugins/cpu/cpu_plugin.json`、`plugins/network/network_plugin.json`、`plugins/systeminfo/systeminfo_plugin.json`、`plugins/disk/disk_plugin.json`。
 - 当前已实现平台通过 `supportedPlatforms` 明确声明。
 - CPU 插件当前已支持 macOS 与 Windows，Windows 采集层位于 `plugins/cpu/platform/windows/`。
-- Disk 插件当前声明支持 macOS；外接硬盘在系统完成挂载后会作为可选挂载卷进入监控列表。
+- Disk 插件当前声明支持 macOS；采集实现位于 `plugins/disk/platform/macos/`，外接硬盘在系统完成挂载后会作为可选挂载卷进入监控列表。
 
 插件输出目录已统一为：
 
