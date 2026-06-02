@@ -50,7 +50,7 @@ void WindowsTaskbarIndicator::refresh()
 {
     TaskbarIndicator::refresh();
 
-    if (!hasPluginDisplays()) {
+    if (!hasPluginDisplays() || isDisplaySuppressed()) {
         for (WindowsTaskbarOverlayWidget* widget : m_overlayWidgets) {
             widget->hideFromTaskbar();
         }

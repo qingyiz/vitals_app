@@ -103,6 +103,23 @@ public:
      */
     void setPluginDisplays(const QList<TaskbarPluginDisplay>& pluginDisplays);
 
+    /**
+     * \if ENGLISH
+     * @brief Temporarily hides taskbar rendering without discarding display sources
+     *
+     * Used for host-level monitoring pause so platform items can keep their
+     * native identity and position, especially macOS menu-bar status items.
+     * \endif
+     *
+     * \if CHINESE
+     * @brief 临时隐藏任务栏渲染，但不丢弃显示来源
+     *
+     * 用于宿主级监控暂停，让平台原生项保留自身身份和位置，尤其是 macOS
+     * 菜单栏状态项。
+     * \endif
+     */
+    void setDisplaySuppressed(bool suppressed);
+
     /// Emits the host-level show request.
     void emitShowRequested();
 
@@ -152,6 +169,10 @@ protected:
 
     /// Returns whether any plugin currently participates in taskbar display.
     bool hasPluginDisplays() const;
+
+    /// Returns whether host policy currently suppresses taskbar rendering.
+    bool isDisplaySuppressed() const;
+
     const QList<TaskbarPluginDisplay>& pluginDisplays() const;
     const QHash<QString, MetricValue>& latestValues() const;
 
@@ -192,6 +213,7 @@ private:
     QAction* m_quitAction = nullptr;
     QHash<QString, MetricValue> m_latestValues;
     QList<TaskbarPluginDisplay> m_pluginDisplays;
+    bool m_displaySuppressed = false;
 };
 
 } // namespace Vitals
