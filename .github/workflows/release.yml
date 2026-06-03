@@ -1,0 +1,113 @@
+name: Release Packages
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-latest
+            artifact_name: Vitals-macos
+            package_name: Vitals-macos.zip
+          - name: Windows
+            os: windows-latest
+            artifact_name: Vitals-windows
+            package_name: Vitals-windows.zip
+          - name: Linux
+            os: ubuntu-latest
+            artifact_name: Vitals-linux
+            package_name: Vitals-linux.tar.gz
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.6.3"
+          target: desktop
+
+      - name: Install macOS tools
+        if: runner.os == 'macOS'
+        run: brew install ninja
+
+      - name: Install Linux tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libgl1-mesa-dev libxkbcommon-x11-0 libxcb-cursor0
+
+      - name: Install Windows tools
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install ninja --no-progress -y
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Deploy and package macOS
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p dist
+          macdeployqt build/bin/Vitals.app -verbose=1
+          ditto -c -k --keepParent build/bin/Vitals.app "dist/${{ matrix.package_name }}"
+
+      - name: Deploy and package Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist
+          windeployqt build/bin/Vitals.exe --release --compiler-runtime
+          Compress-Archive -Path build/bin/* -DestinationPath "dist/${{ matrix.package_name }}" -Force
+
+      - name: Package Linux
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p dist
+          tar -czf "dist/${{ matrix.package_name }}" -C build bin
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/${{ matrix.package_name }}
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Download package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*

@@ -47,6 +47,16 @@ set_target_properties(VitalsApp PROPERTIES
     OUTPUT_NAME "Vitals"
 )
 
+if(APPLE)
+    set_target_properties(VitalsApp PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_BUNDLE_NAME "Vitals"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.vitals.app"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+    )
+endif()
+
 target_include_directories(VitalsApp
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
