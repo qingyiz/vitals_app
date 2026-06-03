@@ -57,8 +57,8 @@ target_link_libraries(NetworkMonitorPlugin
 )
 
 set_target_properties(NetworkMonitorPlugin PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${VITALS_OUTPUT_DIR}/plugins"
-    RUNTIME_OUTPUT_DIRECTORY "${VITALS_OUTPUT_DIR}/plugins"
+    LIBRARY_OUTPUT_DIRECTORY "${VITALS_PLUGIN_OUTPUT_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY "${VITALS_PLUGIN_OUTPUT_DIR}"
 )
 
 if(MSVC)

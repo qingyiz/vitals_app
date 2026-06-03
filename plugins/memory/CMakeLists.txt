@@ -52,8 +52,8 @@ target_link_libraries(MemoryMonitorPlugin
 )
 
 set_target_properties(MemoryMonitorPlugin PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${VITALS_OUTPUT_DIR}/plugins"
-    RUNTIME_OUTPUT_DIRECTORY "${VITALS_OUTPUT_DIR}/plugins"
+    LIBRARY_OUTPUT_DIRECTORY "${VITALS_PLUGIN_OUTPUT_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY "${VITALS_PLUGIN_OUTPUT_DIR}"
 )
 
 if(MSVC)
