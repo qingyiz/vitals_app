@@ -212,6 +212,7 @@ void TaskbarIndicator::initialize(QWidget* mainWindow)
 
     if (!QSystemTrayIcon::isSystemTrayAvailable()) {
         qWarning() << "System tray is not available on this platform/session";
+        setAvailable(false);
         return;
     }
 
@@ -221,6 +222,14 @@ void TaskbarIndicator::initialize(QWidget* mainWindow)
     m_detailAction = new QWidgetAction(m_menu);
     m_detailAction->setDefaultWidget(m_detailWidget);
     m_menu->addAction(m_detailAction);
+    m_menu->addSeparator();
+    m_summaryAction = m_menu->addAction(QStringLiteral("Vitals"));
+    m_summaryAction->setEnabled(false);
+    m_menu->addSeparator();
+    m_showAction = m_menu->addAction(m_showWindowText);
+    connect(m_showAction, &QAction::triggered, this, &TaskbarIndicator::emitShowRequested);
+    m_quitAction = m_menu->addAction(m_quitText);
+    connect(m_quitAction, &QAction::triggered, this, &TaskbarIndicator::emitQuitRequested);
 
     m_trayIcon = new QSystemTrayIcon(this);
     if (usesTrayContextMenu()) {
@@ -235,6 +244,7 @@ void TaskbarIndicator::initialize(QWidget* mainWindow)
                 Q_EMIT showRequested();
             }
         });
+    setAvailable(true);
     refresh();
 }
 
@@ -260,6 +270,40 @@ void TaskbarIndicator::setDisplaySuppressed(bool suppressed)
 
     m_displaySuppressed = suppressed;
     refresh();
+}
+
+bool TaskbarIndicator::isAvailable() const
+{
+    return m_available;
+}
+
+bool TaskbarIndicator::supportsDockIconVisibility() const
+{
+    return false;
+}
+
+void TaskbarIndicator::setDockIconVisible(bool visible)
+{
+    Q_UNUSED(visible)
+}
+
+void TaskbarIndicator::setHostActionTexts(
+    const QString& showWindowText,
+    const QString& quitText,
+    const QString& runningText,
+    const QString& pausedText)
+{
+    m_showWindowText = showWindowText;
+    m_quitText = quitText;
+    m_runningText = runningText;
+    m_pausedText = pausedText;
+    if (m_showAction) {
+        m_showAction->setText(m_showWindowText);
+    }
+    if (m_quitAction) {
+        m_quitAction->setText(m_quitText);
+    }
+    hostActionTextsChanged();
 }
 
 QString TaskbarIndicator::idleText() const
@@ -381,9 +425,34 @@ QWidget* TaskbarIndicator::mainWindow() const
     return m_mainWindow;
 }
 
+QString TaskbarIndicator::showWindowText() const
+{
+    return m_showWindowText;
+}
+
+QString TaskbarIndicator::quitText() const
+{
+    return m_quitText;
+}
+
+QString TaskbarIndicator::runningText() const
+{
+    return m_runningText;
+}
+
+QString TaskbarIndicator::pausedText() const
+{
+    return m_pausedText;
+}
+
 void TaskbarIndicator::setMainWindow(QWidget* mainWindow)
 {
     m_mainWindow = mainWindow;
+}
+
+void TaskbarIndicator::setAvailable(bool available)
+{
+    m_available = available;
 }
 
 bool TaskbarIndicator::hasPluginDisplays() const
@@ -603,11 +672,18 @@ void TaskbarIndicator::refresh()
     }
 
     if (!hasPluginDisplays() || isDisplaySuppressed()) {
-        m_trayIcon->hide();
+        const QString tooltip = isDisplaySuppressed()
+            ? QStringLiteral("Vitals %1\n%2").arg(platformName(), m_pausedText)
+            : QStringLiteral("Vitals %1\n%2").arg(platformName(), m_runningText);
+        m_trayIcon->setIcon(usesDynamicTrayIcon()
+            ? buildIcon(idleText())
+            : QApplication::windowIcon());
+        m_trayIcon->setToolTip(tooltip);
+        if (!m_trayIcon->isVisible()) {
+            m_trayIcon->show();
+        }
         if (m_summaryAction) {
-            m_summaryAction->setText(isDisplaySuppressed()
-                    ? QStringLiteral("Vitals: taskbar display paused")
-                    : QStringLiteral("Vitals: taskbar display disabled"));
+            m_summaryAction->setText(tooltip.split(QStringLiteral("\n")).join(QStringLiteral("  |  ")));
         }
         if (m_detailWidget) {
             m_detailWidget->setContents({});
@@ -628,6 +704,11 @@ void TaskbarIndicator::refresh()
     if (m_summaryAction) {
         m_summaryAction->setText(tooltip.split(QStringLiteral("\n")).join(QStringLiteral("  |  ")));
     }
+}
+
+void TaskbarIndicator::hostActionTextsChanged()
+{
+    refresh();
 }
 
 QStringList TaskbarIndicator::orderedMetricKeys() const

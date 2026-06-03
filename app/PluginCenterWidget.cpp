@@ -72,8 +72,11 @@ PluginCenterWidget::PluginCenterWidget(ConfigManager* configManager, LanguageMan
     rootLayout->addWidget(scrollArea, 1);
 }
 
-void PluginCenterWidget::setPluginInfos(const QList<PluginRuntimeInfo>& pluginInfos)
+void PluginCenterWidget::setPluginInfos(
+    const QList<PluginRuntimeInfo>& pluginInfos,
+    const QHash<QString, bool>& taskbarDefaultEnabledByFilePath)
 {
+    m_taskbarDefaultEnabledByFilePath = taskbarDefaultEnabledByFilePath;
     clearLayout(m_cardsLayout);
 
     int loadedCount = 0;
@@ -155,8 +158,9 @@ QWidget* PluginCenterWidget::createPluginCard(const PluginRuntimeInfo& pluginInf
         auto* taskbarLabel = new QLabel(text(QStringLiteral("plugins.menuBar"), QStringLiteral("Menu Bar")), card);
         taskbarLabel->setObjectName(QStringLiteral("panelBody"));
         auto* taskbarSwitch = new ToggleSwitch(card);
+        const bool taskbarDefaultEnabled = m_taskbarDefaultEnabledByFilePath.value(pluginInfo.filePath, true);
         taskbarSwitch->setChecked(
-            m_configManager->isPluginTaskbarEnabled(pluginInfo.metaInfo.id, pluginInfo.filePath, true));
+            m_configManager->isPluginTaskbarEnabled(pluginInfo.metaInfo.id, pluginInfo.filePath, taskbarDefaultEnabled));
         connect(taskbarSwitch, &ToggleSwitch::toggled, card, [this, pluginInfo](bool checked) {
             Q_EMIT pluginTaskbarVisibilityChanged(pluginInfo.metaInfo.id, pluginInfo.filePath, checked);
         });

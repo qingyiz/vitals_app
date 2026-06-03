@@ -3,6 +3,7 @@
 #include <QIcon>
 #include <QMainWindow>
 
+class QCloseEvent;
 class QStackedWidget;
 class QComboBox;
 class QLabel;
@@ -20,6 +21,7 @@ class NavigationWidget;
 class PluginCenterWidget;
 class PluginManager;
 class TaskbarIndicator;
+class ToggleSwitch;
 
 /**
  * \if ENGLISH
@@ -44,6 +46,9 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
+
+protected:
+    void closeEvent(QCloseEvent* event) override;
 
 private:
     /// Builds the main shell layout and default host pages.
@@ -76,11 +81,17 @@ private:
     /// Builds and wires the language selector for the content status bar.
     void setupLanguageSelector(QWidget* parent);
 
+    /// Builds the macOS-only Dock visibility switch when the platform supports it.
+    void setupDockIconSelector(QWidget* parent);
+
     /// Builds the compact host action buttons at the bottom of the sidebar.
     QWidget* createSidebarActions(QWidget* parent);
 
     /// Refreshes sidebar action labels and tooltips after language changes.
     void refreshSidebarActions();
+
+    /// Refreshes localized host actions exposed by tray/menu-bar entry points.
+    void refreshTaskbarHostActions();
 
     /// Opens the host plugin center page from the compact sidebar action.
     void openPluginCenter();
@@ -90,6 +101,9 @@ private:
 
     /// Updates the language selector to match the active catalog.
     void refreshLanguageSelector();
+
+    /// Applies the persisted platform-level window presence policy.
+    void applyWindowPresencePolicy();
 
     /// Updates the content status message with optional timeout restoration.
     void showStatusMessage(const QString& message, int timeoutMs = 0);
@@ -115,6 +129,8 @@ private:
     QLabel* m_statusMessageLabel = nullptr;
     QLabel* m_languageLabel = nullptr;
     QComboBox* m_languageCombo = nullptr;
+    QLabel* m_dockIconLabel = nullptr;
+    ToggleSwitch* m_dockIconSwitch = nullptr;
     QPushButton* m_bugReportButton = nullptr;
     QPushButton* m_pluginCenterButton = nullptr;
     QPushButton* m_monitorToggleButton = nullptr;

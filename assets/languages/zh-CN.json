@@ -6,6 +6,8 @@
   "translations": {
     "app.title": "Vitals",
     "language.label": "语言",
+    "settings.showDockIcon": "程序坞",
+    "settings.showDockIcon.tooltip": "是否在 macOS 程序坞中显示 Vitals。关闭后可通过菜单栏状态项重新打开主窗口。",
 
     "nav.dashboard": "总览",
     "nav.plugins": "插件",
@@ -19,6 +21,9 @@
     "sidebar.pauseMonitoring": "暂停监控",
     "sidebar.resumeMonitoring": "恢复监控",
     "sidebar.quit": "退出 Vitals",
+    "taskbar.showWindow": "显示 Vitals",
+    "taskbar.runningInBackground": "正在后台运行",
+    "taskbar.monitoringDisplayPaused": "菜单栏显示已暂停",
 
     "status.frameworkReady": "框架已就绪",
     "status.pluginLoaded": "已加载插件：%1",
@@ -33,6 +38,11 @@
     "status.pluginCenterUnavailable": "插件中心不可用",
     "status.monitoringPaused": "监控已暂停",
     "status.monitoringResumed": "监控已恢复",
+    "status.windowHidden": "Vitals 仍在后台运行",
+    "status.windowMinimized": "当前没有可用托盘入口，Vitals 已最小化",
+    "status.dockIconShown": "Vitals 在后台运行时也会保留程序坞图标",
+    "status.dockIconHiddenInBackground": "关闭主窗口进入后台后，Vitals 会从程序坞隐藏",
+    "status.dockIconHidden": "Vitals 已从程序坞隐藏，可通过菜单栏状态项重新打开。",
 
     "dashboard.title": "总览",
     "dashboard.waitingMetrics": "等待指标数据",

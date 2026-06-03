@@ -2,6 +2,7 @@
 
 #include "plugin/PluginManager.h"
 
+#include <QHash>
 #include <QWidget>
 
 class QLabel;
@@ -35,7 +36,9 @@ class PluginCenterWidget : public QWidget
 public:
     explicit PluginCenterWidget(ConfigManager* configManager, LanguageManager* languageManager, QWidget* parent = nullptr);
 
-    void setPluginInfos(const QList<PluginRuntimeInfo>& pluginInfos);
+    void setPluginInfos(
+        const QList<PluginRuntimeInfo>& pluginInfos,
+        const QHash<QString, bool>& taskbarDefaultEnabledByFilePath = {});
 
 Q_SIGNALS:
     void pluginEnabledChanged(const QString& pluginId, const QString& filePath, bool enabled);
@@ -51,6 +54,7 @@ private:
 
     ConfigManager* m_configManager = nullptr;
     LanguageManager* m_languageManager = nullptr;
+    QHash<QString, bool> m_taskbarDefaultEnabledByFilePath;
     QLabel* m_titleLabel = nullptr;
     QLabel* m_summaryLabel = nullptr;
     QVBoxLayout* m_cardsLayout = nullptr;
