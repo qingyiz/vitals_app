@@ -24,6 +24,7 @@
 #include <QCoreApplication>
 #include <QDesktopServices>
 #include <QDir>
+#include <QHash>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPainter>
@@ -151,6 +152,44 @@ QIcon createSidebarActionIcon(SidebarActionIcon type, const QColor& color = QCol
     return QIcon(pixmap);
 }
 
+QHash<QString, bool> taskbarDefaultEnabledByFilePath(const PluginManager* pluginManager)
+{
+    QHash<QString, bool> defaults;
+    if (!pluginManager) {
+        return defaults;
+    }
+
+    QHash<QString, QString> loadedFilePathByPluginId;
+    for (const PluginRuntimeInfo& pluginInfo : pluginManager->pluginInfos()) {
+        if (pluginInfo.status == PluginRuntimeInfo::Status::Loaded) {
+            loadedFilePathByPluginId.insert(pluginInfo.metaInfo.id, pluginInfo.filePath);
+        }
+    }
+
+    for (IPlugin* plugin : pluginManager->plugins()) {
+        if (!plugin) {
+            continue;
+        }
+
+        ITaskbarCapability* capability = plugin->taskbarCapability();
+        auto* provider = capability ? nullptr : dynamic_cast<ITaskbarDisplayPlugin*>(plugin);
+        if (!capability && !provider) {
+            continue;
+        }
+
+        const PluginMetaInfo meta = plugin->metaInfo();
+        const QString filePath = loadedFilePathByPluginId.value(meta.id);
+        if (filePath.isEmpty()) {
+            continue;
+        }
+
+        defaults.insert(filePath,
+            capability ? capability->isEnabledByDefault() : provider->isTaskbarDisplayEnabledByDefault());
+    }
+
+    return defaults;
+}
+
 } // namespace
 
 MainWindow::MainWindow(QWidget* parent)
@@ -268,7 +307,9 @@ void MainWindow::loadPlugins()
     m_pluginManager->loadAllPlugins(pluginsDir, m_appContext, m_configManager);
     syncTaskbarDisplays();
     if (m_pluginCenterPage) {
-        m_pluginCenterPage->setPluginInfos(m_pluginManager->pluginInfos());
+        m_pluginCenterPage->setPluginInfos(
+            m_pluginManager->pluginInfos(),
+            taskbarDefaultEnabledByFilePath(m_pluginManager));
     }
 
     showStatusMessage(text(QStringLiteral("status.pluginsLoaded"), QStringLiteral("Loaded %1 plugin(s)"))
@@ -736,7 +777,9 @@ void MainWindow::rebuildPages(const QString& preferredPageId)
     addPage(QStringLiteral("plugins"), text(QStringLiteral("nav.plugins"), QStringLiteral("Plugins")), createPluginManagerPage(),
         createNavigationIcon(QStringLiteral("plugins")));
     if (m_pluginCenterPage) {
-        m_pluginCenterPage->setPluginInfos(m_pluginManager->pluginInfos());
+        m_pluginCenterPage->setPluginInfos(
+            m_pluginManager->pluginInfos(),
+            taskbarDefaultEnabledByFilePath(m_pluginManager));
     }
 
     for (IPlugin* plugin : m_pluginManager->plugins()) {
