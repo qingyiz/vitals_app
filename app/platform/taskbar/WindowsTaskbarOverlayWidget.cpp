@@ -104,11 +104,15 @@ WindowsTaskbarOverlayWidget::WindowsTaskbarOverlayWidget(QWidget* parent)
     setStyleSheet(QStringLiteral("background: transparent;"));
 
     connect(m_placementTimer, &QTimer::timeout, this, &WindowsTaskbarOverlayWidget::updatePlacement);
-    m_placementTimer->start(1500);
+    m_placementTimer->start(5000);
 }
 
 void WindowsTaskbarOverlayWidget::setDisplayText(const QString& text)
 {
+    if (m_label->text() == text) {
+        return;
+    }
+
     m_label->setText(text);
 
     QFontMetrics metrics(m_label->font());
@@ -127,26 +131,33 @@ void WindowsTaskbarOverlayWidget::setDisplayText(const QString& text)
 
 void WindowsTaskbarOverlayWidget::setDisplayTooltip(const QString& tooltip)
 {
+    if (toolTip() == tooltip && m_label->toolTip() == tooltip) {
+        return;
+    }
+
     setToolTip(tooltip);
     m_label->setToolTip(tooltip);
 }
 
 void WindowsTaskbarOverlayWidget::setAnchorOffsetPx(int offsetPx)
 {
-    m_anchorOffsetPx = qMax(2, offsetPx);
-    updatePlacement();
+    const int boundedOffset = qMax(2, offsetPx);
+    if (m_anchorOffsetPx == boundedOffset) {
+        return;
+    }
+
+    m_anchorOffsetPx = boundedOffset;
 }
 
 void WindowsTaskbarOverlayWidget::showInTaskbar()
 {
+    const bool wasDisplaying = m_shouldDisplay && isVisible();
     m_shouldDisplay = true;
     winId();
-    updatePlacement();
     HWND hwnd = reinterpret_cast<HWND>(winId());
-    if (hwnd) {
+    if (hwnd && !wasDisplaying) {
         ShowWindow(hwnd, SW_SHOWNOACTIVATE);
     }
-    setVisible(true);
     updatePlacement();
 }
 

@@ -63,7 +63,7 @@ private:
     IAppContext* m_context = nullptr;
     std::unique_ptr<IDiskCollector> m_collector;
     QTimer* m_timer = nullptr;
-    int m_intervalMs = 2000;
+    int m_intervalMs = 5000;
     QString m_selectedRootPath;
     DiskSnapshot m_lastSnapshot;
 };

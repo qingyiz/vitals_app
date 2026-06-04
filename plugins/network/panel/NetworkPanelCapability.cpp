@@ -37,7 +37,7 @@ QWidget* NetworkPanelCapability::createPanel(QWidget* parent)
 void NetworkPanelCapability::updateSnapshot(const NetworkSnapshot& snapshot)
 {
     m_lastSnapshot = snapshot;
-    if (m_panel) {
+    if (m_panel && m_panel->isVisible()) {
         m_panel->applySnapshot(m_lastSnapshot);
     }
 }

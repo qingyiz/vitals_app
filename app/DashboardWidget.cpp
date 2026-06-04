@@ -12,6 +12,7 @@
 #include <QResizeEvent>
 #include <QScrollArea>
 #include <QSizePolicy>
+#include <QShowEvent>
 #include <QVBoxLayout>
 #include <QVariant>
 
@@ -104,6 +105,12 @@ void DashboardWidget::resizeEvent(QResizeEvent* event)
     }
 }
 
+void DashboardWidget::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
+    updatePendingPluginSummaries();
+}
+
 void DashboardWidget::updateFrame(const MetricFrame& frame)
 {
     if (frame.pluginId.isEmpty()) {
@@ -114,6 +121,11 @@ void DashboardWidget::updateFrame(const MetricFrame& frame)
     for (const MetricValue& value : frame.values) {
         pluginValues.insert(value.key, value);
         m_metricOwners.insert(value.key, frame.pluginId);
+    }
+
+    if (!isVisible() || (window() && window()->isMinimized())) {
+        m_pendingPluginSummaries.insert(frame.pluginId);
+        return;
     }
 
     updatePluginSummary(frame.pluginId);
@@ -226,6 +238,9 @@ DashboardWidget::PluginGroup& DashboardWidget::ensurePluginGroup(const QString& 
         if (currentGroup.detailsContainer) {
             currentGroup.detailsContainer->setVisible(checked);
         }
+        if (checked) {
+            updatePluginSummary(pluginId);
+        }
         updateGroupHeader(pluginId);
     });
 
@@ -299,8 +314,10 @@ void DashboardWidget::updatePluginSummary(const QString& pluginId)
     CardWidget* summaryCard = group.summaryCard;
     summaryCard->setAccentColor(accentColorForMetric(primaryMetricKeyForPlugin(pluginId)));
 
-    for (const MetricValue& value : pluginValues) {
-        updateMetricCard(ensureMetricCard(pluginId, value.key), value);
+    if (group.expanded) {
+        for (const MetricValue& value : pluginValues) {
+            updateMetricCard(ensureMetricCard(pluginId, value.key), value);
+        }
     }
 
     const QString primaryKey = primaryMetricKeyForPlugin(pluginId);
@@ -324,6 +341,28 @@ void DashboardWidget::updatePluginSummary(const QString& pluginId)
     summaryCard->setHintText(summaryHintForPlugin(pluginId));
     summaryCard->clearProgress();
     updateGroupHeader(pluginId);
+}
+
+void DashboardWidget::updatePendingPluginSummaries()
+{
+    if (m_pendingPluginSummaries.isEmpty()
+        || !isVisible()
+        || (window() && window()->isMinimized())) {
+        return;
+    }
+
+    const QSet<QString> pluginIds = m_pendingPluginSummaries;
+    m_pendingPluginSummaries.clear();
+    for (const QString& pluginId : pluginIds) {
+        updatePluginSummary(pluginId);
+    }
+
+    if (!m_pluginMetrics.isEmpty()) {
+        m_statusLabel->setText(text(QStringLiteral("dashboard.live"), QStringLiteral("Live")));
+        if (m_emptyLabel) {
+            m_emptyLabel->hide();
+        }
+    }
 }
 
 void DashboardWidget::updateGroupHeader(const QString& pluginId)

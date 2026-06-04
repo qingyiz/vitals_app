@@ -18,6 +18,7 @@
 #include <QScreen>
 #include <QStyle>
 #include <QSystemTrayIcon>
+#include <QTimer>
 #include <QWidgetAction>
 #include <QtMath>
 
@@ -201,7 +202,11 @@ TextLayout bestTextLayout(const QString& label)
 
 TaskbarIndicator::TaskbarIndicator(QObject* parent)
     : QObject(parent)
+    , m_refreshTimer(new QTimer(this))
 {
+    m_refreshTimer->setSingleShot(true);
+    m_refreshTimer->setInterval(1000);
+    connect(m_refreshTimer, &QTimer::timeout, this, &TaskbarIndicator::refresh);
 }
 
 TaskbarIndicator::~TaskbarIndicator() = default;
@@ -587,13 +592,25 @@ QString TaskbarIndicator::humanizedMetricName(const QString& key) const
 void TaskbarIndicator::handleMetricUpdated(const MetricValue& value)
 {
     m_latestValues.insert(value.key, value);
-    refresh();
+    scheduleRefresh();
 }
 
 void TaskbarIndicator::handleMetricRemoved(const QString& key)
 {
     m_latestValues.remove(key);
-    refresh();
+    scheduleRefresh();
+}
+
+void TaskbarIndicator::scheduleRefresh()
+{
+    if (!m_refreshTimer) {
+        refresh();
+        return;
+    }
+
+    if (!m_refreshTimer->isActive()) {
+        m_refreshTimer->start();
+    }
 }
 
 void TaskbarIndicator::refresh()
