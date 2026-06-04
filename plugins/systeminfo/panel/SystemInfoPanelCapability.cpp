@@ -37,7 +37,7 @@ QWidget* SystemInfoPanelCapability::createPanel(QWidget* parent)
 void SystemInfoPanelCapability::updateSnapshot(const SystemInfoSnapshot& snapshot)
 {
     m_lastSnapshot = snapshot;
-    if (m_panel) {
+    if (m_panel && m_panel->isVisible()) {
         m_panel->applySnapshot(m_lastSnapshot);
     }
 }

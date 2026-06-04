@@ -43,7 +43,7 @@ QWidget* DiskPanelCapability::createPanel(QWidget* parent)
 void DiskPanelCapability::updateSnapshot(const DiskSnapshot& snapshot)
 {
     m_lastSnapshot = snapshot;
-    if (m_panel) {
+    if (m_panel && m_panel->isVisible()) {
         m_panel->applySnapshot(m_lastSnapshot);
     }
 }

@@ -84,12 +84,16 @@ qint64 readUptimeSeconds()
 
 SystemInfoSnapshot WindowsSystemInfoCollector::collect()
 {
-    SystemInfoSnapshot snapshot;
-    snapshot.deviceName = QSysInfo::machineHostName();
-    snapshot.osVersion = QSysInfo::prettyProductName();
-    snapshot.cpuModel = readCpuModel();
-    snapshot.gpuModel = readGpuModel();
-    snapshot.totalMemoryBytes = readTotalMemoryBytes();
+    if (!m_hasStaticSnapshot) {
+        m_staticSnapshot.deviceName = QSysInfo::machineHostName();
+        m_staticSnapshot.osVersion = QSysInfo::prettyProductName();
+        m_staticSnapshot.cpuModel = readCpuModel();
+        m_staticSnapshot.gpuModel = readGpuModel();
+        m_staticSnapshot.totalMemoryBytes = readTotalMemoryBytes();
+        m_hasStaticSnapshot = true;
+    }
+
+    SystemInfoSnapshot snapshot = m_staticSnapshot;
     snapshot.uptimeSeconds = readUptimeSeconds();
 
     return snapshot;

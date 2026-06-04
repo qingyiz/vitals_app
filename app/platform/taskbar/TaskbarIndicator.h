@@ -17,6 +17,7 @@ class QAction;
 class QMenu;
 class QPixmap;
 class QSystemTrayIcon;
+class QTimer;
 class QWidgetAction;
 class QWidget;
 
@@ -241,6 +242,7 @@ protected:
 private:
     void handleMetricUpdated(const MetricValue& value);
     void handleMetricRemoved(const QString& key);
+    void scheduleRefresh();
     QStringList orderedMetricKeys() const;
     QIcon buildIcon(const QString& label) const;
 
@@ -249,6 +251,7 @@ private:
     QMenu* m_menu = nullptr;
     QWidgetAction* m_detailAction = nullptr;
     TaskbarMenuDetailWidget* m_detailWidget = nullptr;
+    QTimer* m_refreshTimer = nullptr;
     QAction* m_summaryAction = nullptr;
     QAction* m_showAction = nullptr;
     QAction* m_quitAction = nullptr;

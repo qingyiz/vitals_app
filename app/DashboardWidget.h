@@ -3,6 +3,7 @@
 #include "MetricData.h"
 
 #include <QHash>
+#include <QSet>
 #include <QWidget>
 
 class QGridLayout;
@@ -45,6 +46,7 @@ public:
 
 protected:
     void resizeEvent(QResizeEvent* event) override;
+    void showEvent(QShowEvent* event) override;
 
 private Q_SLOTS:
     /// Re-renders one plugin summary when a metric frame changes.
@@ -71,6 +73,7 @@ private:
     void relayoutMetricCards(PluginGroup& group);
     int detailColumnCount(const PluginGroup& group) const;
     void updatePluginSummary(const QString& pluginId);
+    void updatePendingPluginSummaries();
     void updateGroupHeader(const QString& pluginId);
     void updateMetricCard(CardWidget* card, const MetricValue& value);
     QString pluginTitle(const QString& pluginId) const;
@@ -90,6 +93,7 @@ private:
     QHash<QString, PluginGroup> m_groups;
     QHash<QString, QString> m_metricOwners;
     QHash<QString, QHash<QString, MetricValue>> m_pluginMetrics;
+    QSet<QString> m_pendingPluginSummaries;
     LanguageManager* m_languageManager = nullptr;
 };
 

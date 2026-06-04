@@ -37,7 +37,7 @@ QWidget* CpuPanelCapability::createPanel(QWidget* parent)
 void CpuPanelCapability::updateSnapshot(const CpuSnapshot& snapshot)
 {
     m_lastSnapshot = snapshot;
-    if (m_panel) {
+    if (m_panel && m_panel->isVisible()) {
         m_panel->applySnapshot(m_lastSnapshot);
     }
 }

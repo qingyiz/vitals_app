@@ -97,12 +97,12 @@ QList<MetricDescriptor> DiskMonitorCapability::metricDescriptors() const
 
 int DiskMonitorCapability::defaultIntervalMs() const
 {
-    return 2000;
+    return 5000;
 }
 
 void DiskMonitorCapability::setIntervalMs(int intervalMs)
 {
-    m_intervalMs = qMax(1000, intervalMs);
+    m_intervalMs = qMax(3000, intervalMs);
     m_timer->setInterval(m_intervalMs);
 }
 
