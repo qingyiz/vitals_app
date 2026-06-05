@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Vitals
+Comment=Cross-platform desktop system monitor framework
+Exec=Vitals
+Icon=vitals
+Categories=Utility;System;Monitor;
+Terminal=false

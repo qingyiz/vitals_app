@@ -23,19 +23,28 @@ jobs:
           - name: macOS
             os: macos-latest
             artifact_name: Vitals-macos
-            package_name: Vitals-macos.zip
+            package_name: Vitals-macos.dmg
           - name: Windows
             os: windows-latest
             artifact_name: Vitals-windows
-            package_name: Vitals-windows.zip
+            package_name: Vitals-windows-setup.exe
           - name: Linux
-            os: ubuntu-latest
+            os: ubuntu-22.04
             artifact_name: Vitals-linux
-            package_name: Vitals-linux.tar.gz
+            package_name: Vitals-linux-x86_64.AppImage
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set package version
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if [[ "${GITHUB_REF_TYPE}" != "tag" ]]; then
+            version="0.1.0-${GITHUB_RUN_NUMBER}"
+          fi
+          echo "VITALS_PACKAGE_VERSION=${version}" >> "${GITHUB_ENV}"
 
       - name: Set up MSVC
         if: runner.os == 'Windows'
@@ -55,12 +64,12 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build libgl1-mesa-dev libxkbcommon-x11-0 libxcb-cursor0
+          sudo apt-get install -y ninja-build libfuse2 libgl1-mesa-dev libxkbcommon-x11-0 libxcb-cursor0 wget
 
       - name: Install Windows tools
         if: runner.os == 'Windows'
         shell: pwsh
-        run: choco install ninja --no-progress -y
+        run: choco install ninja innosetup --no-progress -y
 
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
@@ -70,10 +79,60 @@ jobs:
 
       - name: Deploy and package macOS
         if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           mkdir -p dist
           macdeployqt build/bin/Vitals.app -verbose=1
-          ditto -c -k --keepParent build/bin/Vitals.app "dist/${{ matrix.package_name }}"
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            missing=0
+            for name in APPLE_CERTIFICATE_BASE64 APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_APP_PASSWORD APPLE_TEAM_ID; do
+              if [[ -z "${!name}" ]]; then
+                echo "::error::Missing required macOS signing secret: ${name}"
+                missing=1
+              fi
+            done
+            if [[ "${missing}" -ne 0 ]]; then
+              exit 1
+            fi
+          fi
+
+          if [[ -n "${APPLE_CERTIFICATE_BASE64}" && -n "${APPLE_CERTIFICATE_PASSWORD}" && -n "${APPLE_SIGNING_IDENTITY}" ]]; then
+            keychain_path="${RUNNER_TEMP}/vitals-signing.keychain-db"
+            certificate_path="${RUNNER_TEMP}/vitals-signing.p12"
+            echo "${APPLE_CERTIFICATE_BASE64}" | base64 --decode > "${certificate_path}"
+            security create-keychain -p "vitals-actions" "${keychain_path}"
+            security set-keychain-settings -lut 21600 "${keychain_path}"
+            security unlock-keychain -p "vitals-actions" "${keychain_path}"
+            security import "${certificate_path}" -P "${APPLE_CERTIFICATE_PASSWORD}" -A -t cert -f pkcs12 -k "${keychain_path}"
+            security list-keychains -d user -s "${keychain_path}"
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "vitals-actions" "${keychain_path}"
+
+            codesign --force --deep --options runtime --timestamp --sign "${APPLE_SIGNING_IDENTITY}" build/bin/Vitals.app
+          elif [[ "${GITHUB_REF_TYPE}" != "tag" ]]; then
+            echo "macOS signing secrets are not configured; creating an unsigned DMG for branch build validation."
+          fi
+
+          hdiutil create -volname "Vitals" -srcfolder build/bin/Vitals.app -ov -format UDZO "dist/${{ matrix.package_name }}"
+
+          if [[ -n "${APPLE_CERTIFICATE_BASE64}" && -n "${APPLE_CERTIFICATE_PASSWORD}" && -n "${APPLE_SIGNING_IDENTITY}" ]]; then
+            codesign --force --timestamp --sign "${APPLE_SIGNING_IDENTITY}" "dist/${{ matrix.package_name }}"
+          fi
+
+          if [[ -n "${APPLE_ID}" && -n "${APPLE_APP_PASSWORD}" && -n "${APPLE_TEAM_ID}" ]]; then
+            xcrun notarytool submit "dist/${{ matrix.package_name }}" \
+              --apple-id "${APPLE_ID}" \
+              --password "${APPLE_APP_PASSWORD}" \
+              --team-id "${APPLE_TEAM_ID}" \
+              --wait
+            xcrun stapler staple "dist/${{ matrix.package_name }}"
+          fi
 
       - name: Deploy and package Windows
         if: runner.os == 'Windows'
@@ -81,13 +140,37 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force dist
           windeployqt build/bin/Vitals.exe --release --compiler-runtime
-          Compress-Archive -Path build/bin/* -DestinationPath "dist/${{ matrix.package_name }}" -Force
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" packaging/windows/Vitals.iss `
+            /DAppVersion="${env:VITALS_PACKAGE_VERSION}" `
+            /DSourceDir="$((Resolve-Path build/bin).Path)" `
+            /DOutputDir="$((Resolve-Path dist).Path)"
 
-      - name: Package Linux
+      - name: Deploy and package Linux
         if: runner.os == 'Linux'
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: 1
         run: |
           mkdir -p dist
-          tar -czf "dist/${{ matrix.package_name }}" -C build bin
+          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/scalable/apps
+          cp -R build/bin/* AppDir/usr/bin/
+          cp packaging/linux/vitals.desktop AppDir/usr/share/applications/vitals.desktop
+          cp assets/app-icon.svg AppDir/usr/share/icons/hicolor/scalable/apps/vitals.svg
+
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
+          export QMAKE="$(command -v qmake || command -v qmake6)"
+          if [[ -z "${QMAKE}" ]]; then
+            echo "::error::qmake was not found in PATH after installing Qt."
+            exit 1
+          fi
+
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --plugin qt \
+            --output appimage
+
+          mv Vitals*.AppImage "dist/${{ matrix.package_name }}"
 
       - name: Upload package artifact
         uses: actions/upload-artifact@v4
