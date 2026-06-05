@@ -63,13 +63,16 @@ QString readGpuModel()
 
 SystemInfoSnapshot MacSystemInfoCollector::collect()
 {
-    SystemInfoSnapshot snapshot;
-    snapshot.deviceName = QSysInfo::machineHostName();
-    snapshot.osVersion = QSysInfo::prettyProductName();
-    snapshot.cpuModel = readStringSysctl("machdep.cpu.brand_string");
-    snapshot.gpuModel = readGpuModel();
-    snapshot.totalMemoryBytes = readUint64Sysctl("hw.memsize");
+    if (!m_hasStaticSnapshot) {
+        m_staticSnapshot.deviceName = QSysInfo::machineHostName();
+        m_staticSnapshot.osVersion = QSysInfo::prettyProductName();
+        m_staticSnapshot.cpuModel = readStringSysctl("machdep.cpu.brand_string");
+        m_staticSnapshot.gpuModel = readGpuModel();
+        m_staticSnapshot.totalMemoryBytes = readUint64Sysctl("hw.memsize");
+        m_hasStaticSnapshot = true;
+    }
 
+    SystemInfoSnapshot snapshot = m_staticSnapshot;
     const qint64 bootSeconds = readBootTimeSeconds();
     if (bootSeconds > 0) {
         snapshot.uptimeSeconds = QDateTime::currentSecsSinceEpoch() - bootSeconds;
