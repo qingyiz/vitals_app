@@ -346,6 +346,55 @@ NSView* detailMenuView(const QList<TaskbarDetailContent>& contents)
     return container;
 }
 
+void appendFingerprintPart(QString& fingerprint, const QString& value)
+{
+    fingerprint += QString::number(value.size());
+    fingerprint += QLatin1Char(':');
+    fingerprint += value;
+    fingerprint += QLatin1Char(';');
+}
+
+QString detailContentFingerprint(const TaskbarDetailContent& content)
+{
+    QString fingerprint;
+    appendFingerprintPart(fingerprint, content.title);
+    appendFingerprintPart(fingerprint, content.subtitle);
+    appendFingerprintPart(fingerprint, content.primaryLabel);
+    appendFingerprintPart(fingerprint, content.primaryValue);
+    appendFingerprintPart(fingerprint, content.accentColor);
+    fingerprint += QString::number(content.badges.size());
+    fingerprint += QLatin1Char('|');
+    for (const TaskbarDetailBadge& badge : content.badges) {
+        appendFingerprintPart(fingerprint, badge.label);
+        appendFingerprintPart(fingerprint, badge.value);
+    }
+    fingerprint += QString::number(content.sections.size());
+    fingerprint += QLatin1Char('|');
+    for (const TaskbarDetailSection& section : content.sections) {
+        appendFingerprintPart(fingerprint, section.title);
+        fingerprint += QString::number(section.rows.size());
+        fingerprint += QLatin1Char('|');
+        for (const TaskbarDetailRow& row : section.rows) {
+            appendFingerprintPart(fingerprint, row.label);
+            appendFingerprintPart(fingerprint, row.value);
+            appendFingerprintPart(fingerprint, row.detail);
+            appendFingerprintPart(fingerprint, QString::number(row.progress, 'f', 3));
+            appendFingerprintPart(fingerprint, row.accentColor);
+        }
+    }
+    return fingerprint;
+}
+
+QString detailContentsFingerprint(const QList<TaskbarDetailContent>& contents)
+{
+    QString fingerprint = QString::number(contents.size());
+    fingerprint += QLatin1Char('|');
+    for (const TaskbarDetailContent& content : contents) {
+        appendFingerprintPart(fingerprint, detailContentFingerprint(content));
+    }
+    return fingerprint;
+}
+
 } // namespace
 
 class MacTaskbarIndicator::NativeBridge
@@ -377,6 +426,9 @@ public:
         NSStatusItem* statusItem = nil;
         NSMenu* menu = nil;
         NSMenuItem* detailItem = nil;
+        QString lastVisibleTitle;
+        QString lastTooltip;
+        QString lastDetailFingerprint;
     };
 
     static void disposeEntry(const Entry& entry)
@@ -676,14 +728,25 @@ void MacTaskbarIndicator::refresh()
                 ? QStringLiteral("Vitals macOS menu bar\n%1").arg(pausedText())
                 : QStringLiteral("Vitals macOS menu bar\n%1").arg(runningText());
             const QPixmap pixmap = buildPixmap(idleText());
-            [button setTitle:@""];
-            [button setToolTip:nsStringFromQString(tooltip)];
-            [button setImage:nsImageFromQPixmap(pixmap, prefersSystemTintedText())];
-            [button setImagePosition:NSImageOnly];
+            if (entry.lastVisibleTitle != idleText()) {
+                [button setTitle:@""];
+                [button setImage:nsImageFromQPixmap(pixmap, prefersSystemTintedText())];
+                [button setImagePosition:NSImageOnly];
+                [entry.statusItem setLength:logicalWidthFromQPixmap(pixmap) + 2.0];
+                entry.lastVisibleTitle = idleText();
+            }
+            if (entry.lastTooltip != tooltip) {
+                [button setToolTip:nsStringFromQString(tooltip)];
+                entry.lastTooltip = tooltip;
+            }
+            const QList<TaskbarDetailContent> detailContents;
+            const QString detailFingerprint = detailContentsFingerprint(detailContents);
+            if (entry.lastDetailFingerprint != detailFingerprint) {
+                [entry.detailItem setTitle:@""];
+                [entry.detailItem setView:detailMenuView(detailContents)];
+                entry.lastDetailFingerprint = detailFingerprint;
+            }
             [entry.statusItem setMenu:entry.menu];
-            [entry.statusItem setLength:logicalWidthFromQPixmap(pixmap) + 2.0];
-            [entry.detailItem setTitle:@""];
-            [entry.detailItem setView:detailMenuView(QList<TaskbarDetailContent>{})];
             [entry.statusItem setVisible:YES];
             continue;
         }
@@ -720,18 +783,30 @@ void MacTaskbarIndicator::refresh()
             }
 
             const QString visibleTitle = label.isEmpty() ? idleText() : label;
-            const QPixmap pixmap = buildPixmap(visibleTitle);
-            [button setTitle:@""];
-            [button setToolTip:nsStringFromQString(tooltip)];
-            [button setImage:nsImageFromQPixmap(pixmap, prefersSystemTintedText())];
-            [button setImagePosition:NSImageOnly];
+            if (entry.lastVisibleTitle != visibleTitle) {
+                const QPixmap pixmap = buildPixmap(visibleTitle);
+                [button setTitle:@""];
+                [button setImage:nsImageFromQPixmap(pixmap, prefersSystemTintedText())];
+                [button setImagePosition:NSImageOnly];
+                [entry.statusItem setLength:logicalWidthFromQPixmap(pixmap) + 2.0];
+                entry.lastVisibleTitle = visibleTitle;
+            }
+            if (entry.lastTooltip != tooltip) {
+                [button setToolTip:nsStringFromQString(tooltip)];
+                entry.lastTooltip = tooltip;
+            }
             [entry.statusItem setMenu:entry.menu];
-            [entry.statusItem setLength:logicalWidthFromQPixmap(pixmap) + 2.0];
 
             const TaskbarDetailContent content = detailContentForDisplay(display, values);
-            [entry.detailItem setTitle:@""];
-            [entry.detailItem setView:detailMenuView(content.isEmpty() ? QList<TaskbarDetailContent>{}
-                                                                       : QList<TaskbarDetailContent>{content})];
+            const QList<TaskbarDetailContent> detailContents = content.isEmpty()
+                ? QList<TaskbarDetailContent>{}
+                : QList<TaskbarDetailContent>{content};
+            const QString detailFingerprint = detailContentsFingerprint(detailContents);
+            if (entry.lastDetailFingerprint != detailFingerprint) {
+                [entry.detailItem setTitle:@""];
+                [entry.detailItem setView:detailMenuView(detailContents)];
+                entry.lastDetailFingerprint = detailFingerprint;
+            }
             [entry.statusItem setVisible:YES];
         }
     } while (m_nativeBridge->refreshPending);
