@@ -3,8 +3,6 @@ name: Release Packages
 on:
   workflow_dispatch:
   push:
-    branches:
-      - develop_mac
     tags:
       - "v*"
 
