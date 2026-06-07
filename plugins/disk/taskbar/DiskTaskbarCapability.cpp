@@ -3,11 +3,16 @@
 #include "IAppContext.h"
 #include "monitor/DiskMonitorCapability.h"
 
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QtGlobal>
 
 namespace Vitals {
 
 namespace {
+
+constexpr const char* PluginId = "com.vitals.disk";
 
 QString formatBytes(qint64 bytes)
 {
@@ -31,6 +36,25 @@ QString formatPercent(double value)
     return QStringLiteral("%1%").arg(qBound(0.0, value, 100.0), 0, 'f', 0);
 }
 
+QString configuredTaskbarLabel(IAppContext* context, const QString& fallback)
+{
+    if (!context) {
+        return fallback;
+    }
+
+    QFile file(context->configPathForPlugin(QString::fromLatin1(PluginId)));
+    if (!file.exists() || !file.open(QIODevice::ReadOnly)) {
+        return fallback;
+    }
+
+    const QString label = QJsonDocument::fromJson(file.readAll())
+        .object()
+        .value(QStringLiteral("taskbarLabel"))
+        .toString()
+        .trimmed();
+    return label.isEmpty() ? fallback : label;
+}
+
 } // namespace
 
 DiskTaskbarCapability::DiskTaskbarCapability(const DiskMonitorCapability* monitorCapability, IAppContext* context)
@@ -46,7 +70,9 @@ QString DiskTaskbarCapability::displayText(const QHash<QString, MetricValue>& la
         return QString();
     }
 
-    return QStringLiteral("Disk %1").arg(formatPercent(usageValue.value.toDouble()));
+    return QStringLiteral("%1 %2")
+        .arg(configuredTaskbarLabel(m_context, defaultTaskbarLabel()),
+            formatPercent(usageValue.value.toDouble()));
 }
 
 QString DiskTaskbarCapability::tooltip(const QHash<QString, MetricValue>& latestValues) const
@@ -65,6 +91,16 @@ QString DiskTaskbarCapability::tooltip(const QHash<QString, MetricValue>& latest
 bool DiskTaskbarCapability::isEnabledByDefault() const
 {
     return false;
+}
+
+bool DiskTaskbarCapability::supportsCustomTaskbarLabel() const
+{
+    return true;
+}
+
+QString DiskTaskbarCapability::defaultTaskbarLabel() const
+{
+    return QStringLiteral("Disk");
 }
 
 TaskbarDetailContent DiskTaskbarCapability::detailContent(const QHash<QString, MetricValue>& latestValues) const

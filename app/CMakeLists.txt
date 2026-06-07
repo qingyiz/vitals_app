@@ -10,6 +10,8 @@ add_executable(VitalsApp
     NavigationWidget.cpp
     PluginCenterWidget.h
     PluginCenterWidget.cpp
+    TaskbarDisplaySettingsWidget.h
+    TaskbarDisplaySettingsWidget.cpp
     ToggleSwitch.h
     ToggleSwitch.cpp
     resources.qrc

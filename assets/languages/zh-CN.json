@@ -117,6 +117,9 @@
     "common.intervalUpper": "间隔",
     "common.yes": "是",
     "common.no": "否",
+    "common.taskbarDisplay": "任务栏显示",
+    "common.taskbarLabel": "显示名",
+    "common.taskbarLabelHint": "显示在实时数值前的紧凑标签。",
 
     "systemInfo.title": "系统信息",
     "systemInfo.subtitle": "基于统一指标管线的主机信息摘要，适合像菜单栏工具一样快速查看。",

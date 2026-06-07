@@ -3,11 +3,16 @@
 #include "IAppContext.h"
 #include "monitor/MemoryMonitorCapability.h"
 
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QtGlobal>
 
 namespace Vitals {
 
 namespace {
+
+constexpr const char* PluginId = "com.vitals.memory";
 
 QString formatBytes(quint64 bytes)
 {
@@ -31,6 +36,25 @@ QString formatPercent(double value)
     return QStringLiteral("%1%").arg(clamped, 0, 'f', clamped >= 10.0 ? 0 : 1);
 }
 
+QString configuredTaskbarLabel(IAppContext* context, const QString& fallback)
+{
+    if (!context) {
+        return fallback;
+    }
+
+    QFile file(context->configPathForPlugin(QString::fromLatin1(PluginId)));
+    if (!file.exists() || !file.open(QIODevice::ReadOnly)) {
+        return fallback;
+    }
+
+    const QString label = QJsonDocument::fromJson(file.readAll())
+        .object()
+        .value(QStringLiteral("taskbarLabel"))
+        .toString()
+        .trimmed();
+    return label.isEmpty() ? fallback : label;
+}
+
 } // namespace
 
 MemoryTaskbarCapability::MemoryTaskbarCapability(const MemoryMonitorCapability* monitorCapability, IAppContext* context)
@@ -46,7 +70,9 @@ QString MemoryTaskbarCapability::displayText(const QHash<QString, MetricValue>& 
         return QString();
     }
 
-    return QStringLiteral("MEM:\n%1").arg(formatPercent(usageValue.value.toDouble()));
+    return QStringLiteral("%1\n%2")
+        .arg(configuredTaskbarLabel(m_context, defaultTaskbarLabel()),
+            formatPercent(usageValue.value.toDouble()));
 }
 
 QString MemoryTaskbarCapability::tooltip(const QHash<QString, MetricValue>& latestValues) const
@@ -62,6 +88,16 @@ QString MemoryTaskbarCapability::tooltip(const QHash<QString, MetricValue>& late
 bool MemoryTaskbarCapability::isEnabledByDefault() const
 {
     return true;
+}
+
+bool MemoryTaskbarCapability::supportsCustomTaskbarLabel() const
+{
+    return true;
+}
+
+QString MemoryTaskbarCapability::defaultTaskbarLabel() const
+{
+    return QStringLiteral("MEM");
 }
 
 TaskbarDetailContent MemoryTaskbarCapability::detailContent(const QHash<QString, MetricValue>& latestValues) const

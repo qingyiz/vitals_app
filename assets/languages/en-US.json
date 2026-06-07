@@ -117,6 +117,9 @@
     "common.intervalUpper": "INTERVAL",
     "common.yes": "Yes",
     "common.no": "No",
+    "common.taskbarDisplay": "Taskbar Display",
+    "common.taskbarLabel": "Label",
+    "common.taskbarLabelHint": "Compact label shown before the live value.",
 
     "systemInfo.title": "System Information",
     "systemInfo.subtitle": "A compact host summary inspired by menu-bar utilities, powered by the shared metric pipeline.",
