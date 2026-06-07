@@ -15,6 +15,7 @@ namespace Vitals {
 class AppContext;
 class ConfigManager;
 class DashboardWidget;
+class IPlugin;
 class LanguageManager;
 class MetricCenter;
 class NavigationWidget;
@@ -71,6 +72,9 @@ private:
 
     /// Creates the host-owned plugin management placeholder page.
     QWidget* createPluginManagerPage();
+
+    /// Wraps a plugin panel with host-owned generic controls declared by capabilities.
+    QWidget* createPluginPanelPage(IPlugin* plugin, QWidget* panel);
 
     /// Applies the current host visual theme and widget stylesheet.
     void applyStyle();

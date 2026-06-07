@@ -1,4 +1,4 @@
-#include "MainWindow.h"
+﻿#include "MainWindow.h"
 
 #include "AppContext.h"
 #include "DashboardWidget.h"
@@ -10,6 +10,7 @@
 #include "NavigationWidget.h"
 #include "PluginCenterWidget.h"
 #include "ToggleSwitch.h"
+#include "TaskbarDisplaySettingsWidget.h"
 #include "config/ConfigManager.h"
 #include "language/LanguageManager.h"
 #include "metric/MetricCenter.h"
@@ -759,6 +760,38 @@ QWidget* MainWindow::createPluginManagerPage()
     return m_pluginCenterPage;
 }
 
+QWidget* MainWindow::createPluginPanelPage(IPlugin* plugin, QWidget* panel)
+{
+    if (!plugin || !panel) {
+        return panel;
+    }
+
+    ITaskbarCapability* taskbarCapability = plugin->taskbarCapability();
+    if (!taskbarCapability || taskbarCapability->taskbarLabelDescriptors().isEmpty()) {
+        return panel;
+    }
+
+    auto* page = new QWidget(this);
+    page->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    auto* layout = new QVBoxLayout(page);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+
+    auto* taskbarSettings = new TaskbarDisplaySettingsWidget(
+        plugin->metaInfo().id,
+        taskbarCapability,
+        m_configManager,
+        m_languageManager,
+        page);
+    connect(taskbarSettings, &TaskbarDisplaySettingsWidget::settingsChanged,
+        this, &MainWindow::syncTaskbarDisplays);
+
+    panel->setParent(page);
+    layout->addWidget(taskbarSettings);
+    layout->addWidget(panel, 1);
+    return page;
+}
+
 void MainWindow::rebuildPages(const QString& preferredPageId)
 {
     m_navigation->clear();
@@ -793,7 +826,7 @@ void MainWindow::rebuildPages(const QString& preferredPageId)
         const QIcon icon = panelCapability ? panelCapability->panelIcon() : panelPlugin->panelIcon();
         const QString iconKey = panelCapability ? panelCapability->panelIconKey() : panelPlugin->panelIconKey();
         QWidget* page = panelCapability ? panelCapability->createPanel(this) : panelPlugin->createPanel(this);
-        addPage(panelId, navigationTitleForPage(panelId, panelName), page,
+        addPage(panelId, navigationTitleForPage(panelId, panelName), createPluginPanelPage(plugin, page),
             icon.isNull() ? createNavigationIcon(iconKey) : icon);
     }
 
@@ -1012,6 +1045,37 @@ void MainWindow::applyStyle()
         QLabel#panelBody {
             color: #6e6e73;
             font-size: 13px;
+        }
+        QFrame#taskbarSettingsPanel {
+            background: rgba(255, 255, 255, 0.72);
+            border-bottom: 1px solid rgba(210, 213, 219, 0.85);
+        }
+        QLabel#taskbarSettingsTitle {
+            color: #1d1d1f;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        QLabel#taskbarSettingsHint {
+            color: #7a7f87;
+            font-size: 12px;
+        }
+        QLabel#taskbarSettingsFieldLabel {
+            color: #6e6e73;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        QLineEdit#taskbarSettingsLineEdit {
+            background: rgba(255, 255, 255, 0.95);
+            color: #1d1d1f;
+            border: 1px solid #cfd3da;
+            border-radius: 6px;
+            padding: 5px 8px;
+            min-height: 20px;
+            font-size: 12px;
+        }
+        QLineEdit#taskbarSettingsLineEdit:focus {
+            border: 1px solid #0a84ff;
+            background: #ffffff;
         }
     )"));
 }

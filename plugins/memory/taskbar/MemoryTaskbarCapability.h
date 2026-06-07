@@ -15,6 +15,8 @@ public:
     QString displayText(const QHash<QString, MetricValue>& latestValues) const override;
     QString tooltip(const QHash<QString, MetricValue>& latestValues) const override;
     bool isEnabledByDefault() const override;
+    bool supportsCustomTaskbarLabel() const override;
+    QString defaultTaskbarLabel() const override;
     TaskbarDetailContent detailContent(const QHash<QString, MetricValue>& latestValues) const override;
 
 private:

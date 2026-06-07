@@ -219,6 +219,11 @@ void DiskMonitorCapability::saveConfig() const
     }
 
     QJsonObject root;
+    QFile existingFile(configPath);
+    if (existingFile.exists() && existingFile.open(QIODevice::ReadOnly)) {
+        root = QJsonDocument::fromJson(existingFile.readAll()).object();
+    }
+
     root.insert(QStringLiteral("selectedRootPath"), m_selectedRootPath);
     root.insert(QStringLiteral("intervalMs"), m_intervalMs);
 

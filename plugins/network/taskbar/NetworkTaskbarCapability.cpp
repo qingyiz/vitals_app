@@ -3,12 +3,19 @@
 #include "IAppContext.h"
 #include "monitor/NetworkMonitorCapability.h"
 
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QStringList>
 #include <QtGlobal>
 
 namespace Vitals {
 
 namespace {
+
+constexpr const char* PluginId = "com.vitals.network";
+constexpr const char* UploadLabelConfigKey = "taskbarUploadLabel";
+constexpr const char* DownloadLabelConfigKey = "taskbarDownloadLabel";
 
 QString formatCompactRate(double bytesPerSecond)
 {
@@ -79,6 +86,25 @@ QString compactInterfaceSummary(const QString& primaryInterface, const QString& 
     return QStringLiteral("%1 +%2 links").arg(preferredInterface).arg(interfaces.size() - 1);
 }
 
+QString configuredTaskbarLabel(IAppContext* context, const QString& configKey, const QString& fallback)
+{
+    if (!context) {
+        return fallback;
+    }
+
+    QFile file(context->configPathForPlugin(QString::fromLatin1(PluginId)));
+    if (!file.exists() || !file.open(QIODevice::ReadOnly)) {
+        return fallback;
+    }
+
+    const QString label = QJsonDocument::fromJson(file.readAll())
+        .object()
+        .value(configKey)
+        .toString()
+        .trimmed();
+    return label.isEmpty() ? fallback : label;
+}
+
 } // namespace
 
 NetworkTaskbarCapability::NetworkTaskbarCapability(const NetworkMonitorCapability* monitorCapability, IAppContext* context)
@@ -95,9 +121,20 @@ QString NetworkTaskbarCapability::displayText(const QHash<QString, MetricValue>&
         return QString();
     }
 
-    return QStringLiteral("%1\n%2")
-        .arg(formatMenuBarRate(uploadValue.value.toDouble()))
-        .arg(formatMenuBarRate(downloadValue.value.toDouble()));
+    const QString uploadLabel = configuredTaskbarLabel(
+        m_context,
+        QString::fromLatin1(UploadLabelConfigKey),
+        QStringLiteral("UP"));
+    const QString downloadLabel = configuredTaskbarLabel(
+        m_context,
+        QString::fromLatin1(DownloadLabelConfigKey),
+        QStringLiteral("DN"));
+
+    return QStringLiteral("%1 %2\n%3 %4")
+        .arg(uploadLabel,
+            formatMenuBarRate(uploadValue.value.toDouble()),
+            downloadLabel,
+            formatMenuBarRate(downloadValue.value.toDouble()));
 }
 
 QString NetworkTaskbarCapability::tooltip(const QHash<QString, MetricValue>& latestValues) const
@@ -118,6 +155,24 @@ QString NetworkTaskbarCapability::tooltip(const QHash<QString, MetricValue>& lat
 bool NetworkTaskbarCapability::isEnabledByDefault() const
 {
     return true;
+}
+
+QList<TaskbarLabelDescriptor> NetworkTaskbarCapability::taskbarLabelDescriptors() const
+{
+    return {
+        {
+            QString::fromLatin1(UploadLabelConfigKey),
+            QStringLiteral("network.upload"),
+            QStringLiteral("Upload"),
+            QStringLiteral("UP")
+        },
+        {
+            QString::fromLatin1(DownloadLabelConfigKey),
+            QStringLiteral("network.download"),
+            QStringLiteral("Download"),
+            QStringLiteral("DN")
+        }
+    };
 }
 
 TaskbarDetailContent NetworkTaskbarCapability::detailContent(const QHash<QString, MetricValue>& latestValues) const
