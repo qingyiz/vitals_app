@@ -29,6 +29,11 @@ double usagePercent(const DiskInfo& disk)
     return qBound(0.0, static_cast<double>(used) * 100.0 / static_cast<double>(disk.bytesTotal), 100.0);
 }
 
+bool hasActivityPercent(const DiskInfo& disk)
+{
+    return disk.activityPercent >= 0.0;
+}
+
 qint64 usedBytes(const DiskInfo& disk)
 {
     return qMax<qint64>(0, disk.bytesTotal - disk.bytesAvailable);
@@ -82,8 +87,10 @@ QList<MetricDescriptor> DiskMonitorCapability::metricDescriptors() const
             QStringLiteral("File system type of the selected disk."), QString(), MetricValueType::String},
         {QStringLiteral("disk.selected.kind"), QStringLiteral("Disk Kind"),
             QStringLiteral("Best-effort classification of the selected disk."), QString(), MetricValueType::String},
-        {QStringLiteral("disk.usage.percent"), QStringLiteral("Disk Usage"),
+        {QStringLiteral("disk.usage.percent"), QStringLiteral("Capacity Usage"),
             QStringLiteral("Used capacity percentage of the selected disk."), QStringLiteral("%"), MetricValueType::Percentage},
+        {QStringLiteral("disk.activity.percent"), QStringLiteral("Disk Activity"),
+            QStringLiteral("Active time percentage of the selected physical disk."), QStringLiteral("%"), MetricValueType::Percentage},
         {QStringLiteral("disk.bytes.total"), QStringLiteral("Total Capacity"),
             QStringLiteral("Total byte capacity of the selected disk."), QStringLiteral("B"), MetricValueType::Bytes},
         {QStringLiteral("disk.bytes.used"), QStringLiteral("Used Capacity"),
@@ -187,6 +194,9 @@ void DiskMonitorCapability::publishSnapshot(const DiskSnapshot& snapshot) const
         {QStringLiteral("disk.bytes.available"), QVariant::fromValue<qlonglong>(disk.bytesAvailable), timestamp, {}},
         {QStringLiteral("disk.count"), snapshot.diskCount, timestamp, {}}
     };
+    if (hasActivityPercent(disk)) {
+        frame.values.append({QStringLiteral("disk.activity.percent"), disk.activityPercent, timestamp, {}});
+    }
     m_context->metricSink()->publishFrame(frame);
 }
 

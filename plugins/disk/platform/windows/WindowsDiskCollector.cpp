@@ -1,14 +1,17 @@
 #include "platform/windows/WindowsDiskCollector.h"
 
 #include <QDir>
+#include <QHash>
 #include <QStorageInfo>
 #include <QVector>
 #include <QtGlobal>
 
 #include <algorithm>
+#include <memory>
 #include <cwchar>
 
 #define NOMINMAX
+#include <pdhmsg.h>
 #include <windows.h>
 #include <winioctl.h>
 
@@ -45,10 +48,41 @@ bool isExternalBusType(STORAGE_BUS_TYPE busType)
         || busType == BusType1394;
 }
 
+QString driveRootKey(const QString& rootPath)
+{
+    QString normalized = QDir::toNativeSeparators(QDir::cleanPath(QDir::fromNativeSeparators(rootPath))).toLower();
+    if (normalized.size() == 2 && normalized.at(1) == QLatin1Char(':')) {
+        normalized.append(QLatin1Char('\\'));
+    }
+    return normalized.left(2);
+}
+
+QString driveKeyFromPdhInstance(const QString& instanceName)
+{
+    const QString normalized = instanceName.toLower();
+    for (int index = 0; index + 1 < normalized.size(); ++index) {
+        const QChar driveLetter = normalized.at(index);
+        if (driveLetter >= QLatin1Char('a')
+            && driveLetter <= QLatin1Char('z')
+            && normalized.at(index + 1) == QLatin1Char(':')) {
+            return normalized.mid(index, 2);
+        }
+    }
+    return {};
+}
+
 } // namespace
+
+WindowsDiskCollector::~WindowsDiskCollector()
+{
+    if (m_activityQuery) {
+        PdhCloseQuery(m_activityQuery);
+    }
+}
 
 bool WindowsDiskCollector::initialize()
 {
+    initializeActivityQuery();
     return true;
 }
 
@@ -79,6 +113,8 @@ DiskSnapshot WindowsDiskCollector::collect(const QString& selectedRootPath)
             disks.append(disk);
         }
     }
+
+    applyActivitySamples(&disks);
 
     std::sort(disks.begin(), disks.end(), [](const DiskInfo& left, const DiskInfo& right) {
         if (left.isRoot != right.isRoot) {
@@ -236,6 +272,93 @@ bool WindowsDiskCollector::isExternalDrive(const QString& rootPath, unsigned int
 
     const auto* descriptor = reinterpret_cast<const STORAGE_DEVICE_DESCRIPTOR*>(descriptorBuffer);
     return isExternalBusType(descriptor->BusType);
+}
+
+bool WindowsDiskCollector::initializeActivityQuery()
+{
+    if (m_activityQueryReady) {
+        return true;
+    }
+
+    PDH_HQUERY query = nullptr;
+    PDH_STATUS status = PdhOpenQueryW(nullptr, 0, &query);
+    if (status != ERROR_SUCCESS) {
+        return false;
+    }
+
+    PDH_HCOUNTER counter = nullptr;
+    status = PdhAddEnglishCounterW(query, L"\\PhysicalDisk(*)\\% Idle Time", 0, &counter);
+    if (status != ERROR_SUCCESS) {
+        PdhCloseQuery(query);
+        return false;
+    }
+
+    m_activityQuery = query;
+    m_idleTimeCounter = counter;
+    m_activityQueryReady = true;
+    return true;
+}
+
+void WindowsDiskCollector::applyActivitySamples(QList<DiskInfo>* disks)
+{
+    if (!disks || disks->isEmpty() || !initializeActivityQuery()) {
+        return;
+    }
+
+    const PDH_STATUS collectStatus = PdhCollectQueryData(m_activityQuery);
+    if (collectStatus != ERROR_SUCCESS) {
+        return;
+    }
+
+    if (!m_hasActivityBaseline) {
+        m_hasActivityBaseline = true;
+        return;
+    }
+
+    DWORD bufferSize = 0;
+    DWORD itemCount = 0;
+    PDH_STATUS status = PdhGetFormattedCounterArrayW(m_idleTimeCounter,
+        PDH_FMT_DOUBLE,
+        &bufferSize,
+        &itemCount,
+        nullptr);
+    if (status != PDH_MORE_DATA || bufferSize == 0 || itemCount == 0) {
+        return;
+    }
+
+    auto buffer = std::make_unique<unsigned char[]>(bufferSize);
+    auto* items = reinterpret_cast<PDH_FMT_COUNTERVALUE_ITEM_W*>(buffer.get());
+    status = PdhGetFormattedCounterArrayW(m_idleTimeCounter,
+        PDH_FMT_DOUBLE,
+        &bufferSize,
+        &itemCount,
+        items);
+    if (status != ERROR_SUCCESS) {
+        return;
+    }
+
+    QHash<QString, double> activityByDrive;
+    for (DWORD index = 0; index < itemCount; ++index) {
+        const QString instanceName = QString::fromWCharArray(items[index].szName);
+        if (instanceName == QStringLiteral("_Total")) {
+            continue;
+        }
+
+        const QString driveKey = driveKeyFromPdhInstance(instanceName);
+        if (driveKey.isEmpty() || items[index].FmtValue.CStatus != PDH_CSTATUS_VALID_DATA) {
+            continue;
+        }
+
+        const double idle = qBound(0.0, items[index].FmtValue.doubleValue, 100.0);
+        activityByDrive.insert(driveKey, qBound(0.0, 100.0 - idle, 100.0));
+    }
+
+    for (DiskInfo& disk : *disks) {
+        const QString driveKey = driveRootKey(disk.rootPath);
+        if (activityByDrive.contains(driveKey)) {
+            disk.activityPercent = activityByDrive.value(driveKey);
+        }
+    }
 }
 
 } // namespace Vitals

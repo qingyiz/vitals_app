@@ -45,6 +45,10 @@ target_link_libraries(DiskMonitorPlugin
         ${VITALS_QT_LIBS}
 )
 
+if(WIN32)
+    target_link_libraries(DiskMonitorPlugin PRIVATE pdh)
+endif()
+
 set_target_properties(DiskMonitorPlugin PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${VITALS_PLUGIN_OUTPUT_DIR}"
     RUNTIME_OUTPUT_DIRECTORY "${VITALS_PLUGIN_OUTPUT_DIR}"
