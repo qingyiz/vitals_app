@@ -521,8 +521,20 @@ void TaskbarIndicator::showDetailMenuNear(const QList<TaskbarDetailContent>& con
         m_detailWidget->setContents(contents);
     }
     if (m_detailAction) {
+        QAction* beforeAction = nullptr;
+        const QList<QAction*> actions = m_menu->actions();
+        for (QAction* action : actions) {
+            if (action != m_detailAction) {
+                beforeAction = action;
+                break;
+            }
+        }
         m_menu->removeAction(m_detailAction);
-        m_menu->addAction(m_detailAction);
+        if (beforeAction) {
+            m_menu->insertAction(beforeAction, m_detailAction);
+        } else {
+            m_menu->addAction(m_detailAction);
+        }
     }
 
     m_menu->ensurePolished();
@@ -700,7 +712,8 @@ void TaskbarIndicator::refresh()
             m_trayIcon->show();
         }
         if (m_summaryAction) {
-            m_summaryAction->setText(tooltip.split(QStringLiteral("\n")).join(QStringLiteral("  |  ")));
+            m_summaryAction->setText(QStringLiteral("Vitals %1").arg(platformName()));
+            m_summaryAction->setToolTip(tooltip);
         }
         if (m_detailWidget) {
             m_detailWidget->setContents({});
@@ -719,7 +732,8 @@ void TaskbarIndicator::refresh()
     }
 
     if (m_summaryAction) {
-        m_summaryAction->setText(tooltip.split(QStringLiteral("\n")).join(QStringLiteral("  |  ")));
+        m_summaryAction->setText(QStringLiteral("Vitals %1").arg(platformName()));
+        m_summaryAction->setToolTip(tooltip);
     }
 }
 
