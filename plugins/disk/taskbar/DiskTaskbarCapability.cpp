@@ -65,7 +65,10 @@ DiskTaskbarCapability::DiskTaskbarCapability(const DiskMonitorCapability* monito
 
 QString DiskTaskbarCapability::displayText(const QHash<QString, MetricValue>& latestValues) const
 {
-    const MetricValue usageValue = latestValues.value(QStringLiteral("disk.usage.percent"));
+    MetricValue usageValue = latestValues.value(QStringLiteral("disk.activity.percent"));
+    if (!usageValue.value.isValid()) {
+        usageValue = latestValues.value(QStringLiteral("disk.usage.percent"));
+    }
     if (!usageValue.value.isValid()) {
         return QString();
     }
@@ -78,13 +81,19 @@ QString DiskTaskbarCapability::displayText(const QHash<QString, MetricValue>& la
 QString DiskTaskbarCapability::tooltip(const QHash<QString, MetricValue>& latestValues) const
 {
     const QString name = latestValues.value(QStringLiteral("disk.selected.name")).value.toString();
+    const MetricValue activityValue = latestValues.value(QStringLiteral("disk.activity.percent"));
+    const double activity = activityValue.value.isValid() ? activityValue.value.toDouble() : -1.0;
     const double usage = latestValues.value(QStringLiteral("disk.usage.percent")).value.toDouble();
     const qint64 available = latestValues.value(QStringLiteral("disk.bytes.available")).value.toLongLong();
     if (name.isEmpty()) {
         return QString();
     }
 
-    return text(QStringLiteral("disk.tooltip"), QStringLiteral("%1: %2 used, %3 available"))
+    if (activity >= 0.0) {
+        return text(QStringLiteral("disk.tooltipWithActivity"), QStringLiteral("%1: %2 active, %3 capacity used, %4 available"))
+            .arg(name, formatPercent(activity), formatPercent(usage), formatBytes(available));
+    }
+    return text(QStringLiteral("disk.tooltip"), QStringLiteral("%1: %2 capacity used, %3 available"))
         .arg(name, formatPercent(usage), formatBytes(available));
 }
 
@@ -109,6 +118,8 @@ TaskbarDetailContent DiskTaskbarCapability::detailContent(const QHash<QString, M
     const QString root = latestValues.value(QStringLiteral("disk.selected.root")).value.toString();
     const QString fileSystem = latestValues.value(QStringLiteral("disk.selected.filesystem")).value.toString();
     const QString kind = latestValues.value(QStringLiteral("disk.selected.kind")).value.toString();
+    const MetricValue activityValue = latestValues.value(QStringLiteral("disk.activity.percent"));
+    const double activity = activityValue.value.isValid() ? activityValue.value.toDouble() : -1.0;
     const double usage = latestValues.value(QStringLiteral("disk.usage.percent")).value.toDouble();
     const qint64 total = latestValues.value(QStringLiteral("disk.bytes.total")).value.toLongLong();
     const qint64 used = latestValues.value(QStringLiteral("disk.bytes.used")).value.toLongLong();
@@ -122,15 +133,22 @@ TaskbarDetailContent DiskTaskbarCapability::detailContent(const QHash<QString, M
     content.title = text(QStringLiteral("disk.title"), QStringLiteral("Disk Monitor"));
     content.subtitle = root;
     content.primaryLabel = name;
-    content.primaryValue = formatPercent(usage);
+    content.primaryValue = activity >= 0.0 ? formatPercent(activity) : formatPercent(usage);
     content.accentColor = QStringLiteral("#bf5af2");
     content.badges = {
+        {text(QStringLiteral("disk.activityUpper"), QStringLiteral("ACTIVE")), activity >= 0.0 ? formatPercent(activity) : QStringLiteral("--")},
         {text(QStringLiteral("disk.freeUpper"), QStringLiteral("FREE")), formatBytes(available)},
-        {text(QStringLiteral("disk.totalUpper"), QStringLiteral("TOTAL")), formatBytes(total)},
-        {text(QStringLiteral("common.intervalUpper"), QStringLiteral("INTERVAL")), QStringLiteral("%1s").arg((m_monitorCapability
-                    ? m_monitorCapability->intervalMs()
-                    : 2000) / 1000.0, 0, 'f', 1)}
+        {text(QStringLiteral("disk.totalUpper"), QStringLiteral("TOTAL")), formatBytes(total)}
     };
+    content.sections.append({
+        text(QStringLiteral("disk.activity"), QStringLiteral("Disk Activity")),
+        {
+            {text(QStringLiteral("disk.activeTime"), QStringLiteral("Active Time")), activity >= 0.0 ? formatPercent(activity) : QStringLiteral("--"), QString(), activity >= 0.0 ? activity / 100.0 : -1.0, QStringLiteral("#bf5af2")},
+            {text(QStringLiteral("common.intervalUpper"), QStringLiteral("INTERVAL")), QStringLiteral("%1s").arg((m_monitorCapability
+                    ? m_monitorCapability->intervalMs()
+                    : 2000) / 1000.0, 0, 'f', 1), QString(), -1.0, QString()}
+        }
+    });
     content.sections.append({
         text(QStringLiteral("disk.capacity"), QStringLiteral("Capacity")),
         {

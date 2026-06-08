@@ -73,20 +73,22 @@ void DiskPanelWidget::applySnapshot(const DiskSnapshot& snapshot)
     }
 
     const double percent = usagePercent(disk);
+    const bool hasActivity = disk.activityPercent >= 0.0;
+    const QString activityText = hasActivity ? formatPercent(disk.activityPercent) : QStringLiteral("--");
     const QString percentText = formatPercent(percent);
     const QString availableText = formatBytes(disk.bytesAvailable);
     const QString totalText = formatBytes(disk.bytesTotal);
     const QString usedText = formatBytes(usedBytes(disk));
     const QString kindText = diskKindLabel(disk);
 
-    m_infoPanel->setHeroTitle(percentText);
+    m_infoPanel->setHeroTitle(hasActivity ? activityText : percentText);
     m_infoPanel->setHeroSubtitle(formatDiskName(disk));
     m_infoPanel->setHeroMeta(QStringLiteral("%1 | %2").arg(disk.rootPath, kindText));
 
     m_infoPanel->setBadges({
+        {text(QStringLiteral("disk.activityUpper"), QStringLiteral("ACTIVE")), activityText},
         {text(QStringLiteral("disk.usedUpper"), QStringLiteral("USED")), usedText},
         {text(QStringLiteral("disk.freeUpper"), QStringLiteral("FREE")), availableText},
-        {text(QStringLiteral("disk.disksUpper"), QStringLiteral("DISKS")), QString::number(snapshot.diskCount)}
     });
 
     m_infoPanel->setDetailsRows({
@@ -101,7 +103,8 @@ void DiskPanelWidget::applySnapshot(const DiskSnapshot& snapshot)
     });
 
     m_infoPanel->setTiles({
-        {text(QStringLiteral("disk.usage"), QStringLiteral("Usage")), percentText},
+        {text(QStringLiteral("disk.activity"), QStringLiteral("Disk Activity")), activityText},
+        {text(QStringLiteral("disk.usage"), QStringLiteral("Capacity Usage")), percentText},
         {text(QStringLiteral("disk.totalCapacity"), QStringLiteral("Total Capacity")), totalText},
         {text(QStringLiteral("disk.usedCapacity"), QStringLiteral("Used Capacity")), usedText},
         {text(QStringLiteral("disk.availableCapacity"), QStringLiteral("Available Capacity")), availableText},

@@ -18,6 +18,7 @@ struct DiskInfo
     qint64 bytesTotal = 0;
     qint64 bytesFree = 0;
     qint64 bytesAvailable = 0;
+    double activityPercent = -1.0;
 };
 
 struct DiskSnapshot

@@ -2,6 +2,10 @@
 
 #include "IDiskCollector.h"
 
+#include <QHash>
+
+#include <pdh.h>
+
 namespace Vitals {
 
 /**
@@ -21,6 +25,9 @@ namespace Vitals {
 class WindowsDiskCollector : public IDiskCollector
 {
 public:
+    WindowsDiskCollector() = default;
+    ~WindowsDiskCollector() override;
+
     bool initialize() override;
     DiskSnapshot collect(const QString& selectedRootPath) override;
 
@@ -30,6 +37,14 @@ private:
     static QString systemRootPath();
     static QString queryDeviceName(const QString& rootPath);
     static bool isExternalDrive(const QString& rootPath, unsigned int driveType);
+
+    bool initializeActivityQuery();
+    void applyActivitySamples(QList<DiskInfo>* disks);
+
+    PDH_HQUERY m_activityQuery = nullptr;
+    PDH_HCOUNTER m_idleTimeCounter = nullptr;
+    bool m_activityQueryReady = false;
+    bool m_hasActivityBaseline = false;
 };
 
 } // namespace Vitals
